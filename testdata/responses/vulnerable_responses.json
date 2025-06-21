@@ -1,0 +1,33 @@
+{
+    "mysql_error": "MySQL Error: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ''' at line 1",
+    "postgresql_error": "PostgreSQL Error: syntax error at or near \"'\" at character 1",
+    "mssql_error": "Microsoft OLE DB Provider for SQL Server error '80040e14'",
+    "oracle_error": "ORA-00933: SQL command not properly ended",
+    "sqlite_error": "SQLite Error: near \"'\": syntax error",
+    "union_response": "Warning: mysql_fetch_array() expects parameter 1 to be resource",
+    "time_delay_response": "Query executed successfully",
+    "boolean_true": "User found: admin",
+    "boolean_false": "User not found",
+    "normal_response": "Welcome to our website! Your search returned 5 results.",
+    "xss_vulnerable": "<script>alert('XSS')</script>",
+    "xss_reflected": "Search results for: <script>alert('XSS')</script>",
+    "error_patterns": [
+        "MySQL Error",
+        "PostgreSQL Error",
+        "ORA-[0-9]+",
+        "SQLite Error",
+        "Microsoft OLE DB",
+        "mysql_fetch_array",
+        "Warning: Division by zero",
+        "Fatal error: Uncaught"
+    ],
+    "success_indicators": [
+        "admin",
+        "root",
+        "database",
+        "version",
+        "user",
+        "password",
+        "information_schema"
+    ]
+}
