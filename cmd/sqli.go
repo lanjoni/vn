@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"vn/internal/scanner"
+
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"vn/internal/scanner"
 )
 
 var sqliCmd = &cobra.Command{

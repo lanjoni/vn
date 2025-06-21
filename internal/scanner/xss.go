@@ -12,8 +12,6 @@ import (
 	"github.com/fatih/color"
 )
 
-
-
 type XSSConfig struct {
 	URL     string
 	Method  string
@@ -165,8 +163,8 @@ func (x *XSSScanner) testPayload(param, payload, payloadType string) {
 	} else if x.config.Method == "POST" {
 		var postData string
 		if x.config.Data != "" {
-			formValues, err := url.ParseQuery(x.config.Data)
-			if err != nil {
+			formValues, parseErr := url.ParseQuery(x.config.Data)
+			if parseErr != nil {
 				return
 			}
 			formValues.Set(param, payload)

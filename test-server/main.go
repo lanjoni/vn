@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func vulnerableEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -25,14 +26,15 @@ func vulnerableEndpoint(w http.ResponseWriter, r *http.Request) {
 	var response strings.Builder
 	response.WriteString("<h1>Vulnerable Test Server</h1>\n")
 
-	if strings.Contains(id, "UNION") || strings.Contains(username, "UNION") || strings.Contains(search, "UNION") {
+	switch {
+	case strings.Contains(id, "UNION") || strings.Contains(username, "UNION") || strings.Contains(search, "UNION"):
 		response.WriteString(`<p style="color: red;">Warning: mysql_fetch_array() expects parameter 1 to be resource</p>`)
-	} else if strings.Contains(id, "SLEEP") || strings.Contains(username, "SLEEP") || strings.Contains(search, "SLEEP") {
+	case strings.Contains(id, "SLEEP") || strings.Contains(username, "SLEEP") || strings.Contains(search, "SLEEP"):
 		response.WriteString(`<p>Query executed successfully</p>`)
-	} else if strings.Contains(id, "'") || strings.Contains(username, "'") || strings.Contains(search, "'") {
+	case strings.Contains(id, "'") || strings.Contains(username, "'") || strings.Contains(search, "'"):
 		response.WriteString(`<p style="color: red;">MySQL Error: You have an error in your SQL syntax; ` +
 			`check the manual that corresponds to your MySQL server version for the right syntax to use near ''' at line 1</p>`)
-	} else {
+	default:
 		response.WriteString(`<p>Normal response - no vulnerability detected</p>`)
 	}
 
@@ -69,5 +71,12 @@ func main() {
 	fmt.Println("   - http://localhost:8080/search?q=test")
 	fmt.Println("   - http://localhost:8080/user?username=admin")
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      nil,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+	log.Fatal(server.ListenAndServe())
 }

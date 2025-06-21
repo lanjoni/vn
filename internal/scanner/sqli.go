@@ -206,8 +206,8 @@ func (s *SQLiScanner) testPayload(param, payload, payloadType string) {
 	} else if s.config.Method == httpMethodPOST {
 		var postData string
 		if s.config.Data != "" {
-			formValues, err := url.ParseQuery(s.config.Data)
-			if err != nil {
+			formValues, parseErr := url.ParseQuery(s.config.Data)
+			if parseErr != nil {
 				return
 			}
 			formValues.Set(param, payload)
@@ -247,10 +247,12 @@ func (s *SQLiScanner) testPayload(param, payload, payloadType string) {
 	responseTime := time.Since(startTime)
 	bodyStr := string(body)
 
-	s.analyzeResponse(param, payload, payloadType, resp, bodyStr, responseTime)
+	s.analyzeResponse(param, payload, payloadType, bodyStr, responseTime)
 }
 
-func (s *SQLiScanner) analyzeResponse(param, payload, payloadType string, resp *http.Response, body string, responseTime time.Duration) {
+func (s *SQLiScanner) analyzeResponse(
+	param, payload, payloadType string, body string, responseTime time.Duration,
+) {
 	var vulnerability *SQLiResult
 
 	switch payloadType {

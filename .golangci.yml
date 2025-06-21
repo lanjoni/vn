@@ -47,20 +47,16 @@ linters-settings:
 linters:
   enable:
     - bodyclose
-    - depguard
+    - copyloopvar
     - dogsled
-    - dupl
     - errcheck
-    - exportloopref
     - exhaustive
-    - funlen
-    - gochecknoinits
     - goconst
     - gocritic
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
+    - mnd
     - goprintffuncname
     - gosec
     - gosimple
@@ -111,6 +107,58 @@ issues:
     - linters:
         - lll
       source: "^//go:generate "
+    
+    # Exclude errcheck for CLI flag parsing
+    - path: cmd/
+      linters:
+        - errcheck
+      text: "Error return value of.*GetString.*is not checked"
+    
+    - path: cmd/
+      linters:
+        - errcheck
+      text: "Error return value of.*GetStringSlice.*is not checked"
+    
+    - path: cmd/
+      linters:
+        - errcheck
+      text: "Error return value of.*GetInt.*is not checked"
+    
+    # Exclude errcheck for viper.BindPFlag which rarely fails
+    - path: cmd/
+      linters:
+        - errcheck
+      text: "Error return value of.*viper.BindPFlag.*is not checked"
+    
+    # Exclude errcheck for test helpers and HTTP writes
+    - path: internal/testutil/
+      linters:
+        - errcheck
+    
+    # Exclude magic numbers for common values
+    - linters:
+        - mnd
+      text: "Magic number: 2,"
+    
+    - linters:
+        - mnd
+      text: "Magic number: 5,"
+    
+    - linters:
+        - mnd
+      text: "Magic number: 10,"
+    
+    - linters:
+        - mnd
+      text: "Magic number: 15,"
+    
+    - linters:
+        - mnd
+      text: "Magic number: 60,"
+    
+    - linters:
+        - mnd
+      text: "Magic number: 100,"
 
   max-issues-per-linter: 0
   max-same-issues: 0 

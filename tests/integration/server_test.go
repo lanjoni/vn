@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -24,14 +25,15 @@ func vulnerableEndpoint(w http.ResponseWriter, r *http.Request) {
 	var response strings.Builder
 	response.WriteString("<h1>Vulnerable Test Server</h1>\n")
 
-	if strings.Contains(id, "UNION") || strings.Contains(username, "UNION") || strings.Contains(search, "UNION") {
+	switch {
+	case strings.Contains(id, "UNION") || strings.Contains(username, "UNION") || strings.Contains(search, "UNION"):
 		response.WriteString(`<p style="color: red;">Warning: mysql_fetch_array() expects parameter 1 to be resource</p>`)
-	} else if strings.Contains(id, "SLEEP") || strings.Contains(username, "SLEEP") || strings.Contains(search, "SLEEP") {
+	case strings.Contains(id, "SLEEP") || strings.Contains(username, "SLEEP") || strings.Contains(search, "SLEEP"):
 		response.WriteString(`<p>Query executed successfully</p>`)
-	} else if strings.Contains(id, "'") || strings.Contains(username, "'") || strings.Contains(search, "'") {
+	case strings.Contains(id, "'") || strings.Contains(username, "'") || strings.Contains(search, "'"):
 		response.WriteString(`<p style="color: red;">MySQL Error: You have an error in your SQL syntax; ` +
 			`check the manual that corresponds to your MySQL server version for the right syntax to use near ''' at line 1</p>`)
-	} else {
+	default:
 		response.WriteString(`<p>Normal response - no vulnerability detected</p>`)
 	}
 
@@ -156,7 +158,7 @@ func TestVulnerableEndpoint(t *testing.T) {
 }
 
 func TestHealthEndpoint(t *testing.T) {
-	req, err := http.NewRequest("GET", "/health", nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "/health", nil)
 	if err != nil {
 		t.Fatalf("Could not create request: %v", err)
 	}
@@ -181,7 +183,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestVulnerableEndpointHeaders(t *testing.T) {
-	req, err := http.NewRequest("GET", "/", nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
 	if err != nil {
 		t.Fatalf("Could not create request: %v", err)
 	}
@@ -196,7 +198,7 @@ func TestVulnerableEndpointHeaders(t *testing.T) {
 }
 
 func TestMultipleParameters(t *testing.T) {
-	req, err := http.NewRequest("GET", "/?id=1&username=admin'&search=test", nil)
+	req, err := http.NewRequestWithContext(context.Background(), "GET", "/?id=1&username=admin'&search=test", nil)
 	if err != nil {
 		t.Fatalf("Could not create request: %v", err)
 	}
