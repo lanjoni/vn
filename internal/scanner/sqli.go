@@ -196,7 +196,6 @@ func (s *SQLiScanner) testPayload(param, payload, payloadType string) {
 	}
 
 	var req *http.Request
-	var err error
 
 	if s.config.Method == "GET" {
 		query := parsedURL.Query()

@@ -12,9 +12,7 @@ import (
 	"github.com/fatih/color"
 )
 
-const (
-	httpMethodPOST = "POST"
-)
+
 
 type XSSConfig struct {
 	URL     string
@@ -116,7 +114,7 @@ func (x *XSSScanner) Scan() []XSSResult {
 			x.config.Params = append(x.config.Params, param)
 		}
 
-		if x.config.Method == httpMethodPOST && x.config.Data != "" {
+		if x.config.Method == "POST" && x.config.Data != "" {
 			formData, err := url.ParseQuery(x.config.Data)
 			if err == nil {
 				for param := range formData {
@@ -157,7 +155,6 @@ func (x *XSSScanner) testPayload(param, payload, payloadType string) {
 	}
 
 	var req *http.Request
-	var err error
 
 	if x.config.Method == "GET" {
 		query := parsedURL.Query()
@@ -165,7 +162,7 @@ func (x *XSSScanner) testPayload(param, payload, payloadType string) {
 		parsedURL.RawQuery = query.Encode()
 
 		req, err = http.NewRequest("GET", parsedURL.String(), nil)
-	} else if x.config.Method == httpMethodPOST {
+	} else if x.config.Method == "POST" {
 		var postData string
 		if x.config.Data != "" {
 			formValues, err := url.ParseQuery(x.config.Data)
