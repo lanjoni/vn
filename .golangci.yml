@@ -130,6 +130,18 @@ issues:
         - errcheck
       text: "Error return value of.*viper.BindPFlag.*is not checked"
     
+    # Exclude gosec for color printing (cosmetic errors)
+    - path: cmd/
+      linters:
+        - gosec
+      text: "G104.*color.*Print"
+    
+    # Exclude gosec G204 in test files (subprocess execution is controlled)
+    - path: tests/integration/cli_test\.go
+      linters:
+        - gosec
+      text: "G204"
+    
     # Exclude errcheck for test helpers and HTTP writes
     - path: internal/testutil/
       linters:
