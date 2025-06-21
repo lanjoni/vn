@@ -86,6 +86,10 @@ linters:
     - godox
     - godot
     - testpackage
+    - gochecknoinits
+    - dupl
+    - depguard
+    - funlen
 
 issues:
   exclude-rules:

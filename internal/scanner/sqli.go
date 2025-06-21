@@ -14,6 +14,10 @@ import (
 	"github.com/fatih/color"
 )
 
+const (
+	httpMethodPOST = "POST"
+)
+
 type SQLiConfig struct {
 	URL     string
 	Method  string
@@ -55,7 +59,8 @@ var sqliPayloads = map[string][]string{
 		"' AND 1=CAST((SELECT COUNT(*) FROM sysobjects) AS INT)--",
 		"'; WAITFOR DELAY '00:00:05'--",
 		"' OR (SELECT COUNT(*) FROM information_schema.tables)>0--",
-		"' AND (SELECT * FROM (SELECT COUNT(*),CONCAT(0x7e,VERSION(),0x7e,FLOOR(RAND(0)*2))x FROM information_schema.tables GROUP BY x)a)--",
+		"' AND (SELECT * FROM (SELECT COUNT(*),CONCAT(0x7e,VERSION(),0x7e,FLOOR(RAND(0)*2))x " +
+			"FROM information_schema.tables GROUP BY x)a)--",
 	},
 	"boolean_based": {
 		"1' AND '1'='1",
@@ -131,38 +136,40 @@ func (s *SQLiScanner) AddResult(result SQLiResult) {
 
 func (s *SQLiScanner) Scan() []SQLiResult {
 	s.results = make([]SQLiResult, 0)
-	
+
 	sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	sp.Start()
 	defer sp.Stop()
-	
+
 	parsedURL, err := url.Parse(s.config.URL)
 	if err != nil {
 		color.Red("Error parsing URL: %v", err)
 		return s.results
 	}
-	
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, s.config.Threads)
-	
+
 	if len(s.config.Params) == 0 {
 		for param := range parsedURL.Query() {
 			s.config.Params = append(s.config.Params, param)
 		}
-		
-		if s.config.Method == "POST" && s.config.Data != "" {
-			formData, _ := url.ParseQuery(s.config.Data)
-			for param := range formData {
-				s.config.Params = append(s.config.Params, param)
+
+		if s.config.Method == httpMethodPOST && s.config.Data != "" {
+			formData, err := url.ParseQuery(s.config.Data)
+			if err == nil {
+				for param := range formData {
+					s.config.Params = append(s.config.Params, param)
+				}
 			}
 		}
 	}
-	
+
 	if len(s.config.Params) == 0 {
 		color.Yellow("⚠️  No parameters detected. Trying common parameter names...")
 		s.config.Params = []string{"id", "user", "username", "q", "search", "query", "page", "category", "type"}
 	}
-	
+
 	for _, payloadType := range []string{"error_based", "boolean_based", "time_based", "union_based", "nosql"} {
 		for _, param := range s.config.Params {
 			for _, payload := range sqliPayloads[payloadType] {
@@ -171,76 +178,82 @@ func (s *SQLiScanner) Scan() []SQLiResult {
 					defer wg.Done()
 					semaphore <- struct{}{}
 					defer func() { <-semaphore }()
-					
+
 					s.testPayload(param, payload, payloadType)
 				}(param, payload, payloadType)
 			}
 		}
 	}
-	
+
 	wg.Wait()
 	return s.results
 }
 
 func (s *SQLiScanner) testPayload(param, payload, payloadType string) {
-	parsedURL, _ := url.Parse(s.config.URL)
-	
+	parsedURL, err := url.Parse(s.config.URL)
+	if err != nil {
+		return
+	}
+
 	var req *http.Request
 	var err error
-	
+
 	if s.config.Method == "GET" {
 		query := parsedURL.Query()
 		query.Set(param, payload)
 		parsedURL.RawQuery = query.Encode()
-		
+
 		req, err = http.NewRequest("GET", parsedURL.String(), nil)
-	} else if s.config.Method == "POST" {
+	} else if s.config.Method == httpMethodPOST {
 		var postData string
 		if s.config.Data != "" {
-			formValues, _ := url.ParseQuery(s.config.Data)
+			formValues, err := url.ParseQuery(s.config.Data)
+			if err != nil {
+				return
+			}
 			formValues.Set(param, payload)
 			postData = formValues.Encode()
 		} else {
 			postData = url.Values{param: {payload}}.Encode()
 		}
-		
+
 		req, err = http.NewRequest("POST", s.config.URL, strings.NewReader(postData))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	
+
 	if err != nil {
 		return
 	}
-	
+
 	for _, header := range s.config.Headers {
 		parts := strings.SplitN(header, ":", 2)
 		if len(parts) == 2 {
 			req.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 		}
 	}
-	
+
 	startTime := time.Now()
-	
+
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
-	
+
 	responseTime := time.Since(startTime)
 	bodyStr := string(body)
-	
+
 	s.analyzeResponse(param, payload, payloadType, resp, bodyStr, responseTime)
 }
 
 func (s *SQLiScanner) analyzeResponse(param, payload, payloadType string, resp *http.Response, body string, responseTime time.Duration) {
 	var vulnerability *SQLiResult
-	
+
 	switch payloadType {
 	case "error_based":
 		if s.detectSQLError(body) {
@@ -253,7 +266,7 @@ func (s *SQLiScanner) analyzeResponse(param, payload, payloadType string, resp *
 				RiskLevel: "High",
 			}
 		}
-		
+
 	case "time_based":
 		if responseTime > 4*time.Second {
 			vulnerability = &SQLiResult{
@@ -265,7 +278,7 @@ func (s *SQLiScanner) analyzeResponse(param, payload, payloadType string, resp *
 				RiskLevel: "High",
 			}
 		}
-		
+
 	case "boolean_based":
 		if s.detectSQLError(body) {
 			vulnerability = &SQLiResult{
@@ -277,7 +290,7 @@ func (s *SQLiScanner) analyzeResponse(param, payload, payloadType string, resp *
 				RiskLevel: "Medium",
 			}
 		}
-		
+
 	case "union_based":
 		if s.detectUnionSuccess(body) {
 			vulnerability = &SQLiResult{
@@ -289,7 +302,7 @@ func (s *SQLiScanner) analyzeResponse(param, payload, payloadType string, resp *
 				RiskLevel: "High",
 			}
 		}
-		
+
 	case "nosql":
 		if s.detectNoSQLError(body) {
 			vulnerability = &SQLiResult{
@@ -302,7 +315,7 @@ func (s *SQLiScanner) analyzeResponse(param, payload, payloadType string, resp *
 			}
 		}
 	}
-	
+
 	if vulnerability != nil {
 		s.mutex.Lock()
 		s.results = append(s.results, *vulnerability)
@@ -334,7 +347,7 @@ func (s *SQLiScanner) detectUnionSuccess(body string) bool {
 		"supplied argument is not a valid MySQL result",
 		"The used SELECT statements have a different number of columns",
 	}
-	
+
 	bodyLower := strings.ToLower(body)
 	for _, indicator := range unionIndicators {
 		if strings.Contains(bodyLower, strings.ToLower(indicator)) {
@@ -354,11 +367,11 @@ func (s *SQLiScanner) detectNoSQLError(body string) bool {
 		regexp.MustCompile(`(?i)couchdb|couch error`),
 		regexp.MustCompile(`(?i)invalid json|json parse error`),
 	}
-	
+
 	for _, pattern := range nosqlErrors {
 		if pattern.MatchString(body) {
 			return true
 		}
 	}
 	return false
-} 
+}

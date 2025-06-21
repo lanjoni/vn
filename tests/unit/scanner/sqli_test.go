@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-	
+
 	"vn/internal/scanner"
 )
 
@@ -16,17 +16,17 @@ func TestNewSQLiScanner(t *testing.T) {
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	
+
 	sqliScanner := scanner.NewSQLiScanner(config)
-	
+
 	if sqliScanner.GetConfig().URL != config.URL {
 		t.Errorf("Expected URL %s, got %s", config.URL, sqliScanner.GetConfig().URL)
 	}
-	
+
 	if sqliScanner.GetConfig().Method != config.Method {
 		t.Errorf("Expected Method %s, got %s", config.Method, sqliScanner.GetConfig().Method)
 	}
-	
+
 	if sqliScanner.GetClient().Timeout != config.Timeout {
 		t.Errorf("Expected Timeout %v, got %v", config.Timeout, sqliScanner.GetClient().Timeout)
 	}
@@ -40,7 +40,7 @@ func TestDetectSQLError(t *testing.T) {
 		Threads: 5,
 	}
 	sqliScanner := scanner.NewSQLiScanner(config)
-	
+
 	testCases := []struct {
 		name     string
 		body     string
@@ -87,7 +87,7 @@ func TestDetectSQLError(t *testing.T) {
 			expected: true,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := sqliScanner.DetectSQLError(tc.body)
@@ -106,7 +106,7 @@ func TestDetectUnionSuccess(t *testing.T) {
 		Threads: 5,
 	}
 	sqliScanner := scanner.NewSQLiScanner(config)
-	
+
 	testCases := []struct {
 		name     string
 		body     string
@@ -138,7 +138,7 @@ func TestDetectUnionSuccess(t *testing.T) {
 			expected: true,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := sqliScanner.DetectUnionSuccess(tc.body)
@@ -157,7 +157,7 @@ func TestDetectNoSQLError(t *testing.T) {
 		Threads: 5,
 	}
 	sqliScanner := scanner.NewSQLiScanner(config)
-	
+
 	testCases := []struct {
 		name     string
 		body     string
@@ -189,7 +189,7 @@ func TestDetectNoSQLError(t *testing.T) {
 			expected: false,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := sqliScanner.DetectNoSQLError(tc.body)
@@ -203,24 +203,24 @@ func TestDetectNoSQLError(t *testing.T) {
 func TestSQLiScannerIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("id")
-		
+
 		if param == "'" {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("You have an error in your SQL syntax"))
 			return
 		}
-		
+
 		if param == "1' UNION SELECT NULL--" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Warning: mysql_fetch_array() expects parameter 1 to be resource"))
 			return
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Normal response"))
 	}))
 	defer server.Close()
-	
+
 	config := scanner.SQLiConfig{
 		URL:     server.URL + "?id=1",
 		Method:  "GET",
@@ -228,14 +228,14 @@ func TestSQLiScannerIntegration(t *testing.T) {
 		Timeout: 5 * time.Second,
 		Threads: 2,
 	}
-	
+
 	sqliScanner := scanner.NewSQLiScanner(config)
 	results := sqliScanner.Scan()
-	
+
 	if len(results) == 0 {
 		t.Error("Expected to find SQL injection vulnerabilities, but found none")
 	}
-	
+
 	for _, result := range results {
 		if result.URL == "" {
 			t.Error("Result URL should not be empty")
@@ -259,12 +259,12 @@ func TestSQLiPayloads(t *testing.T) {
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	
+
 	sqliScanner := scanner.NewSQLiScanner(config)
 	if sqliScanner == nil {
 		t.Error("Expected scanner to be created successfully")
 	}
-	
+
 	if sqliScanner.GetConfig().URL != config.URL {
 		t.Error("Scanner configuration not set properly")
 	}
@@ -278,7 +278,7 @@ func TestSQLiAnalyzeResponse(t *testing.T) {
 		Threads: 5,
 	}
 	sqliScanner := scanner.NewSQLiScanner(config)
-	
+
 	testCases := []struct {
 		name        string
 		body        string
@@ -304,19 +304,19 @@ func TestSQLiAnalyzeResponse(t *testing.T) {
 			expectUnion: false,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			errorResult := sqliScanner.DetectSQLError(tc.body)
 			unionResult := sqliScanner.DetectUnionSuccess(tc.body)
-			
+
 			if errorResult != tc.expectError {
 				t.Errorf("Expected error detection %v, got %v for body: %s", tc.expectError, errorResult, tc.body)
 			}
-			
+
 			if unionResult != tc.expectUnion {
 				t.Errorf("Expected union detection %v, got %v for body: %s", tc.expectUnion, unionResult, tc.body)
 			}
 		})
 	}
-} 
+}

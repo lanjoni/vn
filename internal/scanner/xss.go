@@ -12,6 +12,10 @@ import (
 	"github.com/fatih/color"
 )
 
+const (
+	httpMethodPOST = "POST"
+)
+
 type XSSConfig struct {
 	URL     string
 	Method  string
@@ -93,38 +97,40 @@ func (x *XSSScanner) GetClient() *http.Client {
 
 func (x *XSSScanner) Scan() []XSSResult {
 	x.results = make([]XSSResult, 0)
-	
+
 	sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	sp.Start()
 	defer sp.Stop()
-	
+
 	parsedURL, err := url.Parse(x.config.URL)
 	if err != nil {
 		color.Red("Error parsing URL: %v", err)
 		return x.results
 	}
-	
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, x.config.Threads)
-	
+
 	if len(x.config.Params) == 0 {
 		for param := range parsedURL.Query() {
 			x.config.Params = append(x.config.Params, param)
 		}
-		
-		if x.config.Method == "POST" && x.config.Data != "" {
-			formData, _ := url.ParseQuery(x.config.Data)
-			for param := range formData {
-				x.config.Params = append(x.config.Params, param)
+
+		if x.config.Method == httpMethodPOST && x.config.Data != "" {
+			formData, err := url.ParseQuery(x.config.Data)
+			if err == nil {
+				for param := range formData {
+					x.config.Params = append(x.config.Params, param)
+				}
 			}
 		}
 	}
-	
+
 	if len(x.config.Params) == 0 {
 		color.Yellow("⚠️  No parameters detected. Trying common parameter names...")
 		x.config.Params = []string{"q", "search", "query", "comment", "message", "name", "email", "content"}
 	}
-	
+
 	for _, payloadType := range []string{"reflected", "dom", "filter_bypass"} {
 		for _, param := range x.config.Params {
 			for _, payload := range xssPayloads[payloadType] {
@@ -133,73 +139,79 @@ func (x *XSSScanner) Scan() []XSSResult {
 					defer wg.Done()
 					semaphore <- struct{}{}
 					defer func() { <-semaphore }()
-					
+
 					x.testPayload(param, payload, payloadType)
 				}(param, payload, payloadType)
 			}
 		}
 	}
-	
+
 	wg.Wait()
 	return x.results
 }
 
 func (x *XSSScanner) testPayload(param, payload, payloadType string) {
-	parsedURL, _ := url.Parse(x.config.URL)
-	
+	parsedURL, err := url.Parse(x.config.URL)
+	if err != nil {
+		return
+	}
+
 	var req *http.Request
 	var err error
-	
+
 	if x.config.Method == "GET" {
 		query := parsedURL.Query()
 		query.Set(param, payload)
 		parsedURL.RawQuery = query.Encode()
-		
+
 		req, err = http.NewRequest("GET", parsedURL.String(), nil)
-	} else if x.config.Method == "POST" {
+	} else if x.config.Method == httpMethodPOST {
 		var postData string
 		if x.config.Data != "" {
-			formValues, _ := url.ParseQuery(x.config.Data)
+			formValues, err := url.ParseQuery(x.config.Data)
+			if err != nil {
+				return
+			}
 			formValues.Set(param, payload)
 			postData = formValues.Encode()
 		} else {
 			postData = url.Values{param: {payload}}.Encode()
 		}
-		
+
 		req, err = http.NewRequest("POST", x.config.URL, strings.NewReader(postData))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	
+
 	if err != nil {
 		return
 	}
-	
+
 	for _, header := range x.config.Headers {
 		parts := strings.SplitN(header, ":", 2)
 		if len(parts) == 2 {
 			req.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 		}
 	}
-	
+
 	resp, err := x.client.Do(req)
 	if err != nil {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return
 	}
-	
+
 	bodyStr := string(body)
-	
-	x.analyzeResponse(param, payload, payloadType, resp, bodyStr)
+
+	x.analyzeResponse(param, payload, payloadType, bodyStr)
 }
 
-func (x *XSSScanner) analyzeResponse(param, payload, payloadType string, resp *http.Response, body string) {
+func (x *XSSScanner) analyzeResponse(param, payload, payloadType string, body string) {
 	var vulnerability *XSSResult
-	
+
 	if x.isPayloadReflected(payload, body) {
 		vulnerability = &XSSResult{
 			URL:       x.config.URL,
@@ -207,10 +219,10 @@ func (x *XSSScanner) analyzeResponse(param, payload, payloadType string, resp *h
 			Payload:   payload,
 			Type:      payloadType,
 			Evidence:  "Payload reflected in response without proper encoding",
-			RiskLevel: x.getRiskLevel(payloadType, payload),
+			RiskLevel: x.getRiskLevel(payload),
 		}
 	}
-	
+
 	if vulnerability != nil {
 		x.mutex.Lock()
 		x.results = append(x.results, *vulnerability)
@@ -225,11 +237,11 @@ func (x *XSSScanner) IsPayloadReflected(payload, body string) bool {
 func (x *XSSScanner) isPayloadReflected(payload, body string) bool {
 	bodyLower := strings.ToLower(body)
 	payloadLower := strings.ToLower(payload)
-	
+
 	if strings.Contains(bodyLower, payloadLower) {
 		return true
 	}
-	
+
 	dangerousPatterns := []string{
 		"<script",
 		"javascript:",
@@ -240,21 +252,21 @@ func (x *XSSScanner) isPayloadReflected(payload, body string) bool {
 		"<img",
 		"<svg",
 	}
-	
+
 	for _, pattern := range dangerousPatterns {
 		if strings.Contains(payloadLower, pattern) && strings.Contains(bodyLower, pattern) {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
-func (x *XSSScanner) GetRiskLevel(payloadType, payload string) string {
-	return x.getRiskLevel(payloadType, payload)
+func (x *XSSScanner) GetRiskLevel(payload string) string {
+	return x.getRiskLevel(payload)
 }
 
-func (x *XSSScanner) getRiskLevel(payloadType, payload string) string {
+func (x *XSSScanner) getRiskLevel(payload string) string {
 	if strings.Contains(strings.ToLower(payload), "script") {
 		return "High"
 	}
@@ -265,4 +277,4 @@ func (x *XSSScanner) getRiskLevel(payloadType, payload string) string {
 		return "Medium"
 	}
 	return "Low"
-} 
+}

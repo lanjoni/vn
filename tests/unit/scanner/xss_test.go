@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-	
+
 	"vn/internal/scanner"
 )
 
@@ -16,17 +16,17 @@ func TestNewXSSScanner(t *testing.T) {
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	
+
 	xssScanner := scanner.NewXSSScanner(config)
-	
+
 	if xssScanner.GetConfig().URL != config.URL {
 		t.Errorf("Expected URL %s, got %s", config.URL, xssScanner.GetConfig().URL)
 	}
-	
+
 	if xssScanner.GetConfig().Method != config.Method {
 		t.Errorf("Expected Method %s, got %s", config.Method, xssScanner.GetConfig().Method)
 	}
-	
+
 	if xssScanner.GetClient().Timeout != config.Timeout {
 		t.Errorf("Expected Timeout %v, got %v", config.Timeout, xssScanner.GetClient().Timeout)
 	}
@@ -40,7 +40,7 @@ func TestIsPayloadReflected(t *testing.T) {
 		Threads: 5,
 	}
 	xssScanner := scanner.NewXSSScanner(config)
-	
+
 	testCases := []struct {
 		name     string
 		payload  string
@@ -96,7 +96,7 @@ func TestIsPayloadReflected(t *testing.T) {
 			expected: true,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := xssScanner.IsPayloadReflected(tc.payload, tc.body)
@@ -115,7 +115,7 @@ func TestGetRiskLevel(t *testing.T) {
 		Threads: 5,
 	}
 	xssScanner := scanner.NewXSSScanner(config)
-	
+
 	testCases := []struct {
 		name        string
 		payloadType string
@@ -153,10 +153,10 @@ func TestGetRiskLevel(t *testing.T) {
 			expected:    "Low",
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := xssScanner.GetRiskLevel(tc.payloadType, tc.payload)
+			result := xssScanner.GetRiskLevel(tc.payload)
 			if result != tc.expected {
 				t.Errorf("Expected %s, got %s for payload: %s", tc.expected, result, tc.payload)
 			}
@@ -171,12 +171,12 @@ func TestXSSPayloads(t *testing.T) {
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	
+
 	xssScanner := scanner.NewXSSScanner(config)
 	if xssScanner == nil {
 		t.Error("Expected scanner to be created successfully")
 	}
-	
+
 	if xssScanner.GetConfig().URL != config.URL {
 		t.Error("Scanner configuration not set properly")
 	}
@@ -185,24 +185,24 @@ func TestXSSPayloads(t *testing.T) {
 func TestXSSScannerIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		param := r.URL.Query().Get("q")
-		
+
 		if param == "<script>alert('XSS')</script>" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Search results for: <script>alert('XSS')</script>"))
 			return
 		}
-		
+
 		if param == "<img src=x onerror=alert('XSS')>" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Image tag detected: onerror handler found"))
 			return
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Normal search results"))
 	}))
 	defer server.Close()
-	
+
 	config := scanner.XSSConfig{
 		URL:     server.URL + "?q=test",
 		Method:  "GET",
@@ -210,14 +210,14 @@ func TestXSSScannerIntegration(t *testing.T) {
 		Timeout: 5 * time.Second,
 		Threads: 2,
 	}
-	
+
 	xssScanner := scanner.NewXSSScanner(config)
 	results := xssScanner.Scan()
-	
+
 	if len(results) == 0 {
 		t.Error("Expected to find XSS vulnerabilities, but found none")
 	}
-	
+
 	for _, result := range results {
 		if result.URL == "" {
 			t.Error("Result URL should not be empty")
@@ -245,7 +245,7 @@ func TestXSSAnalyzeResponse(t *testing.T) {
 		Threads: 5,
 	}
 	xssScanner := scanner.NewXSSScanner(config)
-	
+
 	testCases := []struct {
 		name     string
 		payload  string
@@ -271,7 +271,7 @@ func TestXSSAnalyzeResponse(t *testing.T) {
 			expected: false,
 		},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := xssScanner.IsPayloadReflected(tc.payload, tc.body)
@@ -280,4 +280,4 @@ func TestXSSAnalyzeResponse(t *testing.T) {
 			}
 		})
 	}
-} 
+}

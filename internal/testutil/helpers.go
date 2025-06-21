@@ -10,13 +10,13 @@ import (
 func MockServer(responses map[string]string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.Method + " " + r.URL.Path + "?" + r.URL.RawQuery
-		
+
 		if response, exists := responses[key]; exists {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(response))
 			return
 		}
-		
+
 		for pattern, response := range responses {
 			if strings.Contains(key, pattern) {
 				w.WriteHeader(http.StatusOK)
@@ -24,7 +24,7 @@ func MockServer(responses map[string]string) *httptest.Server {
 				return
 			}
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Default response"))
 	}))
@@ -54,34 +54,34 @@ func AssertEqual(t *testing.T, actual, expected interface{}, context string) {
 func VulnerableServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		
+
 		var params []string
 		for key, values := range r.Form {
 			for _, value := range values {
 				params = append(params, key+"="+value)
 			}
 		}
-		
+
 		allParams := strings.Join(params, "&")
-		
+
 		if strings.Contains(allParams, "'") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("MySQL Error: You have an error in your SQL syntax"))
 			return
 		}
-		
+
 		if strings.Contains(allParams, "UNION") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Warning: mysql_fetch_array() expects parameter 1 to be resource"))
 			return
 		}
-		
+
 		if strings.Contains(allParams, "<script>") {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Search results: " + allParams))
 			return
 		}
-		
+
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Normal response"))
 	}))
@@ -92,4 +92,4 @@ func SkipIfShort(t *testing.T, reason string) {
 	if testing.Short() {
 		t.Skipf("Skipping %s in short mode", reason)
 	}
-} 
+}
