@@ -4,7 +4,8 @@ run:
   tests: true
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
 
@@ -17,10 +18,8 @@ linters-settings:
     min-complexity: 15
   
   govet:
-    check-shadowing: true
-  
-  golint:
-    min-confidence: 0.8
+    enable:
+      - shadow
   
   gofmt:
     simplify: true
@@ -35,9 +34,6 @@ linters-settings:
   misspell:
     locale: US
   
-  unused:
-    check-exported: false
-  
   unparam:
     check-exported: false
   
@@ -51,7 +47,6 @@ linters-settings:
 linters:
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - dupl
@@ -71,23 +66,18 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - lll
-    - maligned
     - misspell
     - nakedret
     - noctx
     - nolintlint
     - rowserrcheck
-    - scopelint
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
   
   disable:
