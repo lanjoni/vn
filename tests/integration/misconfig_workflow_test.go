@@ -11,10 +11,8 @@ import (
 )
 
 func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
-	// Create a comprehensive mock server that simulates various misconfigurations
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		// Sensitive files
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("DB_PASSWORD=secret123\nAPI_KEY=abc123"))
@@ -30,13 +28,11 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 		case "/config.bak":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("database_password=secret123"))
-		
-		// Directory listing
+
 		case "/uploads/":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`<html><head><title>Index of /uploads</title></head><body><h1>Index of /uploads</h1><pre><a href="../">Parent Directory</a></pre></body></html>`))
-		
-		// Login endpoints for default credentials testing
+
 		case "/admin":
 			if r.Method == "GET" {
 				w.WriteHeader(http.StatusOK)
@@ -67,20 +63,17 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 					w.Write([]byte(`<p>Login failed</p>`))
 				}
 			}
-		
-		// Version disclosure
+
 		case "/info.php":
 			w.Header().Set("Server", "Apache/2.4.41 (Ubuntu)")
 			w.Header().Set("X-Powered-By", "PHP/7.4.3")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`<html><body><h1>PHP Version 7.4.3</h1><p>Apache/2.4.41 Server</p></body></html>`))
-		
-		// Default installation page
+
 		case "/default.html":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`<html><head><title>Apache2 Ubuntu Default Page</title></head><body><h1>It works!</h1><p>This is the default welcome page</p></body></html>`))
-		
-		// HTTP methods testing
+
 		case "/methods-test":
 			switch r.Method {
 			case "PUT":
@@ -101,13 +94,11 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("OK"))
 			}
-		
-		// Information leakage
+
 		case "/error":
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(`<html><body><h1>Application Error</h1><p>Error: Could not open file '/var/www/html/config.php'</p></body></html>`))
-		
-		// Default response (missing security headers)
+
 		default:
 			// Intentionally missing security headers
 			w.Header().Set("Server", "Apache/2.4.41")
@@ -129,20 +120,17 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 	results := misconfigScanner.Scan()
 
-	// Verify comprehensive results
 	if len(results) < 10 {
 		t.Errorf("Expected at least 10 misconfigurations, got %d", len(results))
 	}
 
-	// Categorize results
 	categories := make(map[string]int)
 	riskLevels := make(map[string]int)
-	
+
 	for _, result := range results {
 		categories[result.Category]++
 		riskLevels[result.RiskLevel]++
-		
-		// Verify all results have required fields
+
 		if result.URL == "" {
 			t.Error("Result missing URL")
 		}
@@ -163,7 +151,6 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 		}
 	}
 
-	// Verify we found issues in all categories
 	expectedCategories := []string{"sensitive-files", "headers", "defaults", "server-config"}
 	for _, category := range expectedCategories {
 		if categories[category] == 0 {
@@ -171,7 +158,6 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 		}
 	}
 
-	// Verify we have different risk levels
 	if riskLevels["High"] == 0 {
 		t.Error("Expected to find High risk issues")
 	}
@@ -179,19 +165,17 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 		t.Error("Expected to find Medium risk issues")
 	}
 
-	// Check for errors
 	errors := misconfigScanner.GetErrors()
 	if len(errors) > 0 {
 		t.Logf("Scanner errors (may be expected): %v", errors)
 	}
 
-	t.Logf("Full workflow results: %d total, Categories: %v, Risk levels: %v", 
+	t.Logf("Full workflow results: %d total, Categories: %v, Risk levels: %v",
 		len(results), categories, riskLevels)
 }
 
 func TestMisconfigScanner_WorkflowWithCustomHeaders(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Check for custom headers
 		if r.Header.Get("Authorization") == "Bearer test-token" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Authenticated response"))
@@ -206,8 +190,8 @@ func TestMisconfigScanner_WorkflowWithCustomHeaders(t *testing.T) {
 	defer server.Close()
 
 	config := scanner.MisconfigConfig{
-		URL:     server.URL,
-		Method:  "GET",
+		URL:    server.URL,
+		Method: "GET",
 		Headers: []string{
 			"Authorization: Bearer test-token",
 			"User-Agent: VN-Scanner",
@@ -220,13 +204,11 @@ func TestMisconfigScanner_WorkflowWithCustomHeaders(t *testing.T) {
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 	results := misconfigScanner.TestSecurityHeaders()
 
-	// Should be able to make requests with custom headers
 	errors := misconfigScanner.GetErrors()
 	if len(errors) > 0 {
 		t.Errorf("Unexpected errors with custom headers: %v", errors)
 	}
 
-	// Should find missing security headers
 	if len(results) == 0 {
 		t.Error("Expected to find missing security headers")
 	}
@@ -252,7 +234,7 @@ func TestMisconfigScanner_WorkflowWithDifferentMethods(t *testing.T) {
 	defer server.Close()
 
 	methods := []string{"GET", "POST", "PUT", "DELETE"}
-	
+
 	for _, method := range methods {
 		t.Run("Method_"+method, func(t *testing.T) {
 			config := scanner.MisconfigConfig{
@@ -267,7 +249,6 @@ func TestMisconfigScanner_WorkflowWithDifferentMethods(t *testing.T) {
 			misconfigScanner := scanner.NewMisconfigScanner(config)
 			results := misconfigScanner.TestHTTPMethods()
 
-			// Should detect dangerous methods regardless of base method
 			if method == "PUT" || method == "DELETE" {
 				if len(results) == 0 {
 					t.Errorf("Expected to detect dangerous method %s", method)
@@ -282,13 +263,13 @@ func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
 	requestCount := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
-		
+
 		// Fail every 3rd request
 		if requestCount%3 == 0 {
 			time.Sleep(2 * time.Second) // Cause timeout
 			return
 		}
-		
+
 		// Succeed for other requests
 		switch r.URL.Path {
 		case "/.env":
@@ -327,7 +308,7 @@ func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
 	// Verify scanner continues working after errors
 	misconfigScanner.ClearErrors()
 	newResults := misconfigScanner.TestSensitiveFiles()
-	
+
 	// Should still be able to get results
 	if len(newResults) == 0 {
 		t.Error("Scanner should continue working after errors")
@@ -356,12 +337,12 @@ func TestMisconfigScanner_WorkflowWithSpecificTests(t *testing.T) {
 	defer server.Close()
 
 	testCases := []struct {
-		name          string
-		tests         []string
-		expectFiles   bool
-		expectHeaders bool
+		name           string
+		tests          []string
+		expectFiles    bool
+		expectHeaders  bool
 		expectDefaults bool
-		expectServer  bool
+		expectServer   bool
 	}{
 		{
 			name:        "Files only",
@@ -483,10 +464,10 @@ func TestMisconfigScanner_WorkflowResultAggregation(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
+
 	// Run scan multiple times to test result aggregation
 	allResults := []scanner.MisconfigResult{}
-	
+
 	for i := 0; i < 3; i++ {
 		misconfigScanner.ClearResults()
 		results := misconfigScanner.Scan()
@@ -517,7 +498,7 @@ func TestMisconfigScanner_WorkflowThreadSafety(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Add small delay to increase chance of race conditions
 		time.Sleep(10 * time.Millisecond)
-		
+
 		switch r.URL.Path {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
@@ -542,19 +523,19 @@ func TestMisconfigScanner_WorkflowThreadSafety(t *testing.T) {
 	numScanners := 5
 	results := make([][]scanner.MisconfigResult, numScanners)
 	errors := make([][]error, numScanners)
-	
+
 	var wg sync.WaitGroup
 	for i := 0; i < numScanners; i++ {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			
+
 			misconfigScanner := scanner.NewMisconfigScanner(config)
 			results[index] = misconfigScanner.Scan()
 			errors[index] = misconfigScanner.GetErrors()
 		}(i)
 	}
-	
+
 	wg.Wait()
 
 	// Verify all scanners completed successfully
@@ -571,7 +552,7 @@ func TestMisconfigScanner_WorkflowThreadSafety(t *testing.T) {
 	expectedResultCount := len(results[0])
 	for i := 1; i < numScanners; i++ {
 		if len(results[i]) != expectedResultCount {
-			t.Errorf("Scanner %d returned %d results, expected %d", 
+			t.Errorf("Scanner %d returned %d results, expected %d",
 				i, len(results[i]), expectedResultCount)
 		}
 	}

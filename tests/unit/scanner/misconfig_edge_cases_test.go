@@ -27,11 +27,11 @@ func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
+
 	// Test individual components instead of full scan to avoid backup file URL issues
 	sensitiveResults := misconfigScanner.TestSensitiveFiles()
 	headerResults := misconfigScanner.TestSecurityHeaders()
-	
+
 	results := append(sensitiveResults, headerResults...)
 
 	// Should handle empty responses gracefully
@@ -408,7 +408,7 @@ func TestMisconfigScanner_EdgeCases_NegativeThreads(t *testing.T) {
 			// This is acceptable behavior for negative threads
 		}
 	}()
-	
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
@@ -432,7 +432,7 @@ func TestMisconfigScanner_EdgeCases_NegativeThreads(t *testing.T) {
 	if len(errors) > 0 {
 		t.Logf("Errors with negative threads (may be expected): %v", errors)
 	}
-	
+
 	// Should still function (may default to some reasonable value or panic)
 	if results == nil {
 		t.Log("Results are nil with negative threads (acceptable)")
@@ -515,8 +515,8 @@ func TestMisconfigScanner_EdgeCases_MalformedCustomHeaders(t *testing.T) {
 	defer server.Close()
 
 	config := scanner.MisconfigConfig{
-		URL:     server.URL,
-		Method:  "GET",
+		URL:    server.URL,
+		Method: "GET",
 		Headers: []string{
 			"Invalid-Header-Without-Colon",
 			":",

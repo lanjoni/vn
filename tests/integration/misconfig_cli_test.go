@@ -407,4 +407,3 @@ func TestMisconfigCLIEdgeCases(t *testing.T) {
 		})
 	}
 }
-

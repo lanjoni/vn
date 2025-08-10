@@ -162,4 +162,3 @@ func TestMisconfigScanner_ErrorRecoveryAndContinuation(t *testing.T) {
 		t.Error("Expected API_KEY in results")
 	}
 }
-

@@ -30,9 +30,9 @@ func TestMisconfigScanner_TestSensitiveFiles(t *testing.T) {
 		{
 			name: "detects multiple sensitive files",
 			serverResponse: map[string]string{
-				"/.env":        "DB_PASSWORD=secret",
-				"/config.php":  "<?php $db_pass = 'secret'; ?>",
-				"/robots.txt":  "User-agent: *\nDisallow: /admin",
+				"/.env":       "DB_PASSWORD=secret",
+				"/config.php": "<?php $db_pass = 'secret'; ?>",
+				"/robots.txt": "User-agent: *\nDisallow: /admin",
 			},
 			expectedCount: 3,
 		},
@@ -70,7 +70,7 @@ func TestMisconfigScanner_TestSensitiveFiles(t *testing.T) {
 			if len(results) != tt.expectedCount {
 				t.Errorf("Expected %d results, got %d", tt.expectedCount, len(results))
 			}
-			
+
 			if tt.expectedCount > 0 && tt.expectedRisk != "" {
 				found := false
 				for _, result := range results {
@@ -224,7 +224,7 @@ func TestMisconfigScanner_TestBackupFiles(t *testing.T) {
 			if len(results) != tt.expectedCount {
 				t.Errorf("Expected %d results, got %d", tt.expectedCount, len(results))
 			}
-			
+
 			for _, result := range results {
 				if result.Category != "sensitive-files" {
 					t.Errorf("Expected category 'sensitive-files', got '%s'", result.Category)
@@ -301,15 +301,15 @@ func TestMisconfigScanner_DetectDirectoryListing(t *testing.T) {
 
 func TestMisconfigScanner_TestSecurityHeaders(t *testing.T) {
 	tests := []struct {
-		name            string
-		responseHeaders map[string]string
-		expectedCount   int
+		name             string
+		responseHeaders  map[string]string
+		expectedCount    int
 		expectedFindings []string
 	}{
 		{
-			name: "missing all required headers",
+			name:            "missing all required headers",
 			responseHeaders: map[string]string{},
-			expectedCount: 3,
+			expectedCount:   3,
 			expectedFindings: []string{
 				"Missing security header: X-Frame-Options",
 				"Missing security header: X-Content-Type-Options",
@@ -319,11 +319,11 @@ func TestMisconfigScanner_TestSecurityHeaders(t *testing.T) {
 		{
 			name: "all headers present with valid values",
 			responseHeaders: map[string]string{
-				"X-Frame-Options":        "DENY",
-				"X-Content-Type-Options": "nosniff",
+				"X-Frame-Options":           "DENY",
+				"X-Content-Type-Options":    "nosniff",
 				"Strict-Transport-Security": "max-age=31536000",
-				"Content-Security-Policy": "default-src 'self'",
-				"X-XSS-Protection": "1; mode=block",
+				"Content-Security-Policy":   "default-src 'self'",
+				"X-XSS-Protection":          "1; mode=block",
 			},
 			expectedCount: 0,
 		},
@@ -332,7 +332,7 @@ func TestMisconfigScanner_TestSecurityHeaders(t *testing.T) {
 			responseHeaders: map[string]string{
 				"X-Frame-Options":        "ALLOWALL",
 				"X-Content-Type-Options": "sniff",
-				"X-XSS-Protection": "0",
+				"X-XSS-Protection":       "0",
 			},
 			expectedCount: 4,
 			expectedFindings: []string{
@@ -420,10 +420,10 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 			expectedRisk:    "High",
 		},
 		{
-			name:            "HTTPS site with valid HSTS header",
-			url:             "https://example.com",
-			hstsHeader:      "max-age=31536000; includeSubDomains",
-			expectedResult:  false,
+			name:           "HTTPS site with valid HSTS header",
+			url:            "https://example.com",
+			hstsHeader:     "max-age=31536000; includeSubDomains",
+			expectedResult: false,
 		},
 		{
 			name:            "HTTPS site with HSTS missing max-age",
@@ -434,10 +434,10 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 			expectedRisk:    "Medium",
 		},
 		{
-			name:            "HTTP site (HSTS not applicable)",
-			url:             "http://example.com",
-			hstsHeader:      "",
-			expectedResult:  false,
+			name:           "HTTP site (HSTS not applicable)",
+			url:            "http://example.com",
+			hstsHeader:     "",
+			expectedResult: false,
 		},
 	}
 
@@ -469,7 +469,7 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 			}
 
 			misconfigScanner := scanner.NewMisconfigScanner(config)
-			
+
 			// For HTTPS tests, we need to mock the HTTP response since we can't make real HTTPS calls to test servers
 			if tt.url == "https://example.com" {
 				// Create a mock HTTP response
@@ -480,10 +480,10 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 				if tt.hstsHeader != "" {
 					resp.Header.Set("Strict-Transport-Security", tt.hstsHeader)
 				}
-				
+
 				// Test the logic directly using the analyzeHTTPSEnforcement helper
 				result := misconfigScanner.AnalyzeHTTPSEnforcement(resp, tt.url)
-				
+
 				if tt.expectedResult {
 					if result == nil {
 						t.Error("Expected result but got nil")
@@ -506,7 +506,7 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 			} else {
 				// For HTTP tests, we can use the actual method
 				result := misconfigScanner.TestHTTPSEnforcement()
-				
+
 				if tt.expectedResult {
 					if result == nil {
 						t.Error("Expected result but got nil")
@@ -941,46 +941,46 @@ func TestMisconfigScanner_TestDefaultPages(t *testing.T) {
 
 func TestMisconfigScanner_DetectVersionDisclosure(t *testing.T) {
 	tests := []struct {
-		name            string
-		response        string
-		expectedResult  bool
+		name             string
+		response         string
+		expectedResult   bool
 		expectedSoftware string
-		expectedVersion string
+		expectedVersion  string
 	}{
 		{
-			name:            "Apache version disclosure",
-			response:        "Server: Apache/2.4.41 (Ubuntu)",
-			expectedResult:  true,
+			name:             "Apache version disclosure",
+			response:         "Server: Apache/2.4.41 (Ubuntu)",
+			expectedResult:   true,
 			expectedSoftware: "Apache",
-			expectedVersion: "2.4.41",
+			expectedVersion:  "2.4.41",
 		},
 		{
-			name:            "Nginx version disclosure",
-			response:        "Server: nginx/1.18.0",
-			expectedResult:  true,
+			name:             "Nginx version disclosure",
+			response:         "Server: nginx/1.18.0",
+			expectedResult:   true,
 			expectedSoftware: "nginx",
-			expectedVersion: "1.18.0",
+			expectedVersion:  "1.18.0",
 		},
 		{
-			name:            "PHP version disclosure",
-			response:        "X-Powered-By: PHP/7.4.3",
-			expectedResult:  true,
+			name:             "PHP version disclosure",
+			response:         "X-Powered-By: PHP/7.4.3",
+			expectedResult:   true,
 			expectedSoftware: "PHP",
-			expectedVersion: "7.4.3",
+			expectedVersion:  "7.4.3",
 		},
 		{
-			name:            "MySQL version disclosure",
-			response:        "MySQL Server version: 8.0.25",
-			expectedResult:  true,
+			name:             "MySQL version disclosure",
+			response:         "MySQL Server version: 8.0.25",
+			expectedResult:   true,
 			expectedSoftware: "MySQL",
-			expectedVersion: "8.0.25",
+			expectedVersion:  "8.0.25",
 		},
 		{
-			name:            "WordPress version disclosure",
-			response:        "WordPress 5.8.1 installation",
-			expectedResult:  true,
+			name:             "WordPress version disclosure",
+			response:         "WordPress 5.8.1 installation",
+			expectedResult:   true,
 			expectedSoftware: "WordPress",
-			expectedVersion: "5.8.1",
+			expectedVersion:  "5.8.1",
 		},
 		{
 			name:           "no version disclosure",
@@ -1125,9 +1125,9 @@ func TestMisconfigScanner_TestHTTPMethods(t *testing.T) {
 			expectedRisk:    "High",
 		},
 		{
-			name:            "only safe methods enabled",
-			allowedMethods:  []string{"GET", "POST", "HEAD"},
-			expectedCount:   0,
+			name:           "only safe methods enabled",
+			allowedMethods: []string{"GET", "POST", "HEAD"},
+			expectedCount:  0,
 		},
 		{
 			name:            "OPTIONS method enabled",
@@ -1155,7 +1155,7 @@ func TestMisconfigScanner_TestHTTPMethods(t *testing.T) {
 						break
 					}
 				}
-				
+
 				if methodAllowed {
 					w.WriteHeader(http.StatusOK)
 					w.Write([]byte("OK"))
@@ -1413,32 +1413,32 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 
 func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 	tests := []struct {
-		name            string
-		redirects       map[string]string // path -> redirect location
+		name             string
+		redirects        map[string]string // path -> redirect location
 		expectedMinCount int
-		expectedFinding string
+		expectedFinding  string
 	}{
 		{
 			name: "open redirect detected",
 			redirects: map[string]string{
-				"/redirect?url=http://evil.com":      "http://evil.com",
-				"/redirect?redirect=http://evil.com": "http://evil.com",
-				"/redirect?return=http://evil.com":   "http://evil.com",
-				"/redirect?next=http://evil.com":     "http://evil.com",
-				"/login?return_to=http://evil.com":   "http://evil.com",
+				"/redirect?url=http://evil.com":        "http://evil.com",
+				"/redirect?redirect=http://evil.com":   "http://evil.com",
+				"/redirect?return=http://evil.com":     "http://evil.com",
+				"/redirect?next=http://evil.com":       "http://evil.com",
+				"/login?return_to=http://evil.com":     "http://evil.com",
 				"/logout?redirect_uri=http://evil.com": "http://evil.com",
 			},
 			expectedMinCount: 1,
-			expectedFinding: "Insecure redirect configuration detected",
+			expectedFinding:  "Insecure redirect configuration detected",
 		},
 		{
 			name: "safe redirects only",
 			redirects: map[string]string{
-				"/redirect?url=http://evil.com":      "/dashboard",
-				"/redirect?redirect=http://evil.com": "/login",
-				"/redirect?return=http://evil.com":   "/home",
-				"/redirect?next=http://evil.com":     "/profile",
-				"/login?return_to=http://evil.com":   "/dashboard",
+				"/redirect?url=http://evil.com":        "/dashboard",
+				"/redirect?redirect=http://evil.com":   "/login",
+				"/redirect?return=http://evil.com":     "/home",
+				"/redirect?next=http://evil.com":       "/profile",
+				"/login?return_to=http://evil.com":     "/dashboard",
 				"/logout?redirect_uri=http://evil.com": "/login",
 			},
 			expectedMinCount: 0,
@@ -1446,15 +1446,15 @@ func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 		{
 			name: "mixed redirects",
 			redirects: map[string]string{
-				"/redirect?url=http://evil.com":      "http://evil.com",
-				"/redirect?redirect=http://evil.com": "/login",
-				"/redirect?return=http://evil.com":   "/home",
-				"/redirect?next=http://evil.com":     "/profile",
-				"/login?return_to=http://evil.com":   "/dashboard",
+				"/redirect?url=http://evil.com":        "http://evil.com",
+				"/redirect?redirect=http://evil.com":   "/login",
+				"/redirect?return=http://evil.com":     "/home",
+				"/redirect?next=http://evil.com":       "/profile",
+				"/login?return_to=http://evil.com":     "/dashboard",
 				"/logout?redirect_uri=http://evil.com": "/login",
 			},
 			expectedMinCount: 1,
-			expectedFinding: "Insecure redirect configuration detected",
+			expectedFinding:  "Insecure redirect configuration detected",
 		},
 		{
 			name:             "no redirects",
@@ -1470,7 +1470,7 @@ func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 				if r.URL.RawQuery != "" {
 					fullPath += "?" + r.URL.RawQuery
 				}
-				
+
 				if location, exists := tt.redirects[fullPath]; exists {
 					w.Header().Set("Location", location)
 					w.WriteHeader(http.StatusFound)
@@ -1521,11 +1521,11 @@ func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 
 func TestMisconfigScanner_Scan(t *testing.T) {
 	tests := []struct {
-		name            string
-		config          scanner.MisconfigConfig
-		serverResponses map[string]string
-		serverHeaders   map[string]string
-		expectedCount   int
+		name               string
+		config             scanner.MisconfigConfig
+		serverResponses    map[string]string
+		serverHeaders      map[string]string
+		expectedCount      int
 		expectedCategories []string
 	}{
 		{
@@ -1539,13 +1539,13 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 				Tests:   []string{}, // Empty means run all tests
 			},
 			serverResponses: map[string]string{
-				"/.env": "DB_PASSWORD=secret123",
+				"/.env":  "DB_PASSWORD=secret123",
 				"/login": `<form method="post"><input name="username"><input type="password" name="password"></form>`,
 			},
 			serverHeaders: map[string]string{
 				// Missing security headers will be detected
 			},
-			expectedCount: 4, // At least: .env file, missing headers (3), login form detected
+			expectedCount:      4, // At least: .env file, missing headers (3), login form detected
 			expectedCategories: []string{"sensitive-files", "headers"},
 		},
 		{
@@ -1561,8 +1561,8 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 			serverResponses: map[string]string{
 				"/.env": "DB_PASSWORD=secret123",
 			},
-			serverHeaders: map[string]string{},
-			expectedCount: 4, // .env file + 3 missing headers
+			serverHeaders:      map[string]string{},
+			expectedCount:      4, // .env file + 3 missing headers
 			expectedCategories: []string{"sensitive-files", "headers"},
 		},
 		{
@@ -1576,11 +1576,11 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 				Tests:   []string{"files"},
 			},
 			serverResponses: map[string]string{
-				"/.env": "DB_PASSWORD=secret123",
+				"/.env":       "DB_PASSWORD=secret123",
 				"/config.php": "<?php $secret = 'password'; ?>",
 			},
-			serverHeaders: map[string]string{},
-			expectedCount: 2, // Only file-related findings
+			serverHeaders:      map[string]string{},
+			expectedCount:      2, // Only file-related findings
 			expectedCategories: []string{"sensitive-files"},
 		},
 		{
@@ -1594,12 +1594,12 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 				Tests:   []string{"files"},
 			},
 			serverResponses: map[string]string{
-				"/.env": "DB_PASSWORD=secret123",
+				"/.env":       "DB_PASSWORD=secret123",
 				"/config.php": "<?php $secret = 'password'; ?>",
 				"/robots.txt": "User-agent: *",
 			},
-			serverHeaders: map[string]string{},
-			expectedCount: 3,
+			serverHeaders:      map[string]string{},
+			expectedCount:      3,
 			expectedCategories: []string{"sensitive-files"},
 		},
 	}
@@ -1611,7 +1611,7 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 				for name, value := range tt.serverHeaders {
 					w.Header().Set(name, value)
 				}
-				
+
 				// Handle responses
 				if content, exists := tt.serverResponses[r.URL.Path]; exists {
 					w.WriteHeader(http.StatusOK)
@@ -1658,13 +1658,13 @@ func TestMisconfigScanner_ConcurrentExecution(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Simulate some processing time
 		time.Sleep(10 * time.Millisecond)
-		
+
 		responses := map[string]string{
-			"/.env": "DB_PASSWORD=secret123",
+			"/.env":       "DB_PASSWORD=secret123",
 			"/config.php": "<?php $secret = 'password'; ?>",
 			"/robots.txt": "User-agent: *",
 		}
-		
+
 		if content, exists := responses[r.URL.Path]; exists {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(content))
@@ -1684,11 +1684,11 @@ func TestMisconfigScanner_ConcurrentExecution(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
+
 	// Run multiple scans concurrently to test thread safety
 	var wg sync.WaitGroup
 	results := make([][]scanner.MisconfigResult, 3)
-	
+
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
 		go func(index int) {
@@ -1696,16 +1696,16 @@ func TestMisconfigScanner_ConcurrentExecution(t *testing.T) {
 			results[index] = misconfigScanner.Scan()
 		}(i)
 	}
-	
+
 	wg.Wait()
-	
+
 	// Verify all scans produced results
 	for i, result := range results {
 		if len(result) == 0 {
 			t.Errorf("Scan %d produced no results", i)
 		}
 	}
-	
+
 	// Verify the final aggregated results contain all findings
 	finalResults := misconfigScanner.GetResults()
 	if len(finalResults) == 0 {
@@ -1767,7 +1767,7 @@ func TestMisconfigScanner_ShouldRunTest(t *testing.T) {
 			result := misconfigScanner.ShouldRunTest(tt.testCategory)
 
 			if result != tt.expected {
-				t.Errorf("Expected %v, got %v for category '%s' with config tests %v", 
+				t.Errorf("Expected %v, got %v for category '%s' with config tests %v",
 					tt.expected, result, tt.testCategory, tt.configTests)
 			}
 		})

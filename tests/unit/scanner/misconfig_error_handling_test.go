@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -74,7 +75,7 @@ func TestMisconfigScanner_HTTPRequestErrorHandling(t *testing.T) {
 			misconfigScanner.TestSecurityHeaders()
 
 			errors := misconfigScanner.GetErrors()
-			
+
 			if tt.expectedError {
 				if len(errors) == 0 {
 					t.Error("Expected error but got none")
@@ -112,12 +113,10 @@ func TestMisconfigScanner_DNSErrorHandling(t *testing.T) {
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 	results := misconfigScanner.TestSensitiveFiles()
 
-	// Should have no results due to DNS failure
 	if len(results) > 0 {
 		t.Errorf("Expected no results due to DNS failure, got %d", len(results))
 	}
 
-	// Should have DNS-related errors
 	errors := misconfigScanner.GetErrors()
 	if len(errors) == 0 {
 		t.Error("Expected DNS errors but got none")
@@ -125,9 +124,9 @@ func TestMisconfigScanner_DNSErrorHandling(t *testing.T) {
 
 	found := false
 	for _, err := range errors {
-		if strings.Contains(err.Error(), "DNS resolution failed") || 
-		   strings.Contains(err.Error(), "host not found") ||
-		   strings.Contains(err.Error(), "no such host") {
+		if strings.Contains(err.Error(), "DNS resolution failed") ||
+			strings.Contains(err.Error(), "host not found") ||
+			strings.Contains(err.Error(), "no such host") {
 			found = true
 			break
 		}
@@ -138,10 +137,8 @@ func TestMisconfigScanner_DNSErrorHandling(t *testing.T) {
 }
 
 func TestMisconfigScanner_ResponseSizeLimit(t *testing.T) {
-	// Create a server that returns a moderately large response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		// Write 100KB of data (larger than our 50KB limit for directory listings)
 		data := strings.Repeat("A", 1024*100)
 		w.Write([]byte(data))
 	}))
@@ -159,11 +156,8 @@ func TestMisconfigScanner_ResponseSizeLimit(t *testing.T) {
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 	_ = misconfigScanner.TestDirectoryListing("/")
 
-	// Should handle large response gracefully by limiting the read
-	// The result might be nil or might contain truncated data
 	errors := misconfigScanner.GetErrors()
-	
-	// We expect either no errors (successful size limiting) or context errors
+
 	hasContextError := false
 	for _, err := range errors {
 		if strings.Contains(err.Error(), "context") {
@@ -171,18 +165,15 @@ func TestMisconfigScanner_ResponseSizeLimit(t *testing.T) {
 			break
 		}
 	}
-	
-	// Either should work without major issues
+
 	if len(errors) > 0 && !hasContextError {
 		t.Errorf("Expected no errors or only context errors for size limiting, got: %v", errors)
 	}
 }
 
 func TestMisconfigScanner_InvalidUTF8Handling(t *testing.T) {
-	// Create a server that returns invalid UTF-8
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		// Write invalid UTF-8 bytes
 		invalidUTF8 := []byte{0xff, 0xfe, 0xfd}
 		w.Write(invalidUTF8)
 		w.Write([]byte("valid text"))
@@ -201,12 +192,10 @@ func TestMisconfigScanner_InvalidUTF8Handling(t *testing.T) {
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 	result := misconfigScanner.TestDirectoryListing("/")
 
-	// Should handle invalid UTF-8 gracefully
 	if result != nil {
 		t.Error("Expected nil result due to invalid UTF-8")
 	}
 
-	// Should have UTF-8 encoding error
 	errors := misconfigScanner.GetErrors()
 	found := false
 	for _, err := range errors {
@@ -221,7 +210,6 @@ func TestMisconfigScanner_InvalidUTF8Handling(t *testing.T) {
 }
 
 func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
-	// Create a server that succeeds for .env but fails for other files
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/.env" {
 			w.WriteHeader(http.StatusOK)
@@ -245,22 +233,18 @@ func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Test individual file that should succeed
+
 	results := []scanner.MisconfigResult{}
-	
-	// Test .env file specifically (should succeed)
+
 	envFile := scanner.SensitiveFile{Path: "/.env", Description: "Environment file", RiskLevel: "High", Method: "GET"}
 	if result := misconfigScanner.TestSingleFile(envFile); result != nil {
 		results = append(results, *result)
 	}
 
-	// Should have the successful result
 	if len(results) == 0 {
 		t.Error("Expected at least one successful result")
 	}
 
-	// Verify that successful request produced the expected result
 	found := false
 	for _, result := range results {
 		if strings.Contains(result.Evidence, "DB_PASSWORD") {
@@ -274,9 +258,7 @@ func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 }
 
 func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
-	// Create a server that randomly fails or succeeds
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simulate random failures
 		if strings.Contains(r.URL.Path, "fail") {
 			time.Sleep(2 * time.Second) // Cause timeout
 			return
@@ -298,18 +280,15 @@ func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 	results := misconfigScanner.Scan()
 
-	// Should complete without panicking
 	if results == nil {
 		t.Error("Expected results slice, got nil")
 	}
 
-	// Should have collected errors from failed requests
 	errors := misconfigScanner.GetErrors()
 	if len(errors) == 0 {
 		t.Error("Expected some errors from concurrent failures")
 	}
 
-	// Verify error handling is thread-safe
 	for i := 0; i < 100; i++ {
 		go func() {
 			misconfigScanner.AddError(fmt.Errorf("test error %d", i))
@@ -317,7 +296,7 @@ func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 	}
 
 	time.Sleep(100 * time.Millisecond) // Allow goroutines to complete
-	
+
 	finalErrors := misconfigScanner.GetErrors()
 	if len(finalErrors) < len(errors) {
 		t.Error("Error collection appears to have race conditions")
@@ -325,7 +304,6 @@ func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 }
 
 func TestMisconfigScanner_PanicRecovery(t *testing.T) {
-	// Create a server that causes panic-inducing responses
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("normal response"))
@@ -342,32 +320,28 @@ func TestMisconfigScanner_PanicRecovery(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// This should not panic even if individual tests have issues
+
 	results := misconfigScanner.Scan()
-	
+
 	if results == nil {
 		t.Error("Expected results slice, got nil")
 	}
 
-	// Should complete successfully
 	errors := misconfigScanner.GetErrors()
-	
-	// Check that we can still get results and errors
+
 	if len(results) < 0 {
 		t.Error("Results slice should be valid")
 	}
-	
+
 	if len(errors) < 0 {
 		t.Error("Errors slice should be valid")
 	}
 }
 
 func TestMisconfigScanner_ResourceCleanup(t *testing.T) {
-	// Create a server that tracks connection count
-	connectionCount := 0
+	var connectionCount int64
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		connectionCount++
+		atomic.AddInt64(&connectionCount, 1)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	}))
@@ -383,8 +357,7 @@ func TestMisconfigScanner_ResourceCleanup(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Run multiple scans to test resource cleanup
+
 	for i := 0; i < 5; i++ {
 		results := misconfigScanner.TestSensitiveFiles()
 		if results == nil {
@@ -392,14 +365,12 @@ func TestMisconfigScanner_ResourceCleanup(t *testing.T) {
 		}
 	}
 
-	// Verify no resource leaks by checking that we can still make requests
 	finalResults := misconfigScanner.TestSensitiveFiles()
 	if finalResults == nil {
 		t.Error("Expected final results, resource cleanup may have failed")
 	}
 
-	// Should have made multiple connections
-	if connectionCount == 0 {
+	if atomic.LoadInt64(&connectionCount) == 0 {
 		t.Error("Expected some connections to be made")
 	}
 }
@@ -415,24 +386,21 @@ func TestMisconfigScanner_ErrorClearance(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Generate some errors
+
 	misconfigScanner.TestSensitiveFiles()
-	
+
 	errors := misconfigScanner.GetErrors()
 	if len(errors) == 0 {
 		t.Error("Expected some errors to be generated")
 	}
 
-	// Clear errors
 	misconfigScanner.ClearErrors()
-	
+
 	clearedErrors := misconfigScanner.GetErrors()
 	if len(clearedErrors) != 0 {
 		t.Errorf("Expected no errors after clearing, got %d", len(clearedErrors))
 	}
 
-	// Verify that new errors can still be added
 	misconfigScanner.AddError(fmt.Errorf("test error"))
 	newErrors := misconfigScanner.GetErrors()
 	if len(newErrors) != 1 {
@@ -441,14 +409,12 @@ func TestMisconfigScanner_ErrorClearance(t *testing.T) {
 }
 
 func TestMisconfigScanner_TLSErrorHandling(t *testing.T) {
-	// Create an HTTPS server with invalid certificate
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	}))
 	defer server.Close()
 
-	// Create a client that doesn't skip certificate verification
 	config := scanner.MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
@@ -458,10 +424,8 @@ func TestMisconfigScanner_TLSErrorHandling(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	// Create scanner with strict TLS verification
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Override the client to not skip certificate verification
+
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: false, // Strict verification
@@ -471,19 +435,16 @@ func TestMisconfigScanner_TLSErrorHandling(t *testing.T) {
 		Timeout:   config.Timeout,
 		Transport: transport,
 	}
-	
-	// Test with strict TLS - this should generate TLS errors
+
 	req, _ := http.NewRequest("GET", server.URL, nil)
 	_, err := client.Do(req)
-	
+
 	if err == nil {
 		t.Error("Expected TLS error but got none")
 	}
 
-	// Verify our error handling would catch this
 	wrappedErr := misconfigScanner.GetErrors()
 	if len(wrappedErr) > 0 {
-		// If we have errors, verify they're handled properly
 		for _, e := range wrappedErr {
 			if e == nil {
 				t.Error("Error should not be nil")

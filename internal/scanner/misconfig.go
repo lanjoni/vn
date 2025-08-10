@@ -35,11 +35,11 @@ type MisconfigResult struct {
 }
 
 type MisconfigScanner struct {
-	config  MisconfigConfig
-	client  *http.Client
-	results []MisconfigResult
-	mutex   sync.Mutex
-	errors  []error
+	config     MisconfigConfig
+	client     *http.Client
+	results    []MisconfigResult
+	mutex      sync.Mutex
+	errors     []error
 	errorMutex sync.Mutex
 }
 
@@ -76,11 +76,11 @@ type SensitiveFile struct {
 }
 
 type SecurityHeader struct {
-	Name         string
-	Required     bool
-	ValidValues  []string
-	RiskLevel    string
-	Description  string
+	Name        string
+	Required    bool
+	ValidValues []string
+	RiskLevel   string
+	Description string
 }
 
 type DefaultCredential struct {
@@ -168,14 +168,14 @@ func (m *MisconfigScanner) ClearErrors() {
 func (m *MisconfigScanner) makeHTTPRequest(req *http.Request) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()
-	
+
 	req = req.WithContext(ctx)
-	
+
 	resp, err := m.client.Do(req)
 	if err != nil {
 		return nil, m.handleHTTPError(err)
 	}
-	
+
 	return resp, nil
 }
 
@@ -183,7 +183,7 @@ func (m *MisconfigScanner) handleHTTPError(err error) error {
 	var netErr net.Error
 	var dnsErr *net.DNSError
 	var tlsErr tls.RecordHeaderError
-	
+
 	switch {
 	case errors.As(err, &netErr) && netErr.Timeout():
 		wrappedErr := fmt.Errorf("HTTP request timeout: %w", err)
@@ -216,17 +216,17 @@ func (m *MisconfigScanner) safeReadResponse(resp *http.Response, maxSize int64) 
 	if resp == nil || resp.Body == nil {
 		return nil, fmt.Errorf("invalid response or nil body")
 	}
-	
+
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
 			m.AddError(fmt.Errorf("failed to close response body: %w", err))
 		}
 	}()
-	
+
 	if maxSize <= 0 {
 		maxSize = 1024 * 1024
 	}
-	
+
 	limitedReader := io.LimitReader(resp.Body, maxSize)
 	body, err := io.ReadAll(limitedReader)
 	if err != nil {
@@ -234,12 +234,12 @@ func (m *MisconfigScanner) safeReadResponse(resp *http.Response, maxSize int64) 
 		m.AddError(wrappedErr)
 		return nil, wrappedErr
 	}
-	
+
 	if !utf8.Valid(body) {
 		m.AddError(fmt.Errorf("response contains invalid UTF-8 encoding"))
 		body = []byte(strings.ToValidUTF8(string(body), "�"))
 	}
-	
+
 	return body, nil
 }
 
@@ -250,14 +250,14 @@ func (m *MisconfigScanner) createHTTPRequest(method, url string, body io.Reader)
 		m.AddError(wrappedErr)
 		return nil, wrappedErr
 	}
-	
+
 	for _, header := range m.config.Headers {
 		parts := strings.SplitN(header, ":", 2)
 		if len(parts) == 2 {
 			req.Header.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
 		}
 	}
-	
+
 	return req, nil
 }
 
@@ -367,10 +367,10 @@ func (m *MisconfigScanner) Scan() []MisconfigResult {
 					m.AddError(fmt.Errorf("panic in %s test: %v", category, r))
 				}
 			}()
-			
+
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
-			
+
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
@@ -390,7 +390,7 @@ func (m *MisconfigScanner) runSensitiveFilesTests() {
 	if m.shouldRunTest("files") {
 		m.TestSensitiveFiles()
 		m.TestBackupFiles()
-		
+
 		commonDirs := []string{"/", "/admin", "/uploads", "/files", "/backup"}
 		for _, dir := range commonDirs {
 			if result := m.TestDirectoryListing(dir); result != nil {
@@ -431,7 +431,7 @@ func (m *MisconfigScanner) shouldRunTest(category string) bool {
 	if len(m.config.Tests) == 0 {
 		return true
 	}
-	
+
 	for _, test := range m.config.Tests {
 		if test == category {
 			return true
@@ -501,7 +501,7 @@ func (m *MisconfigScanner) testSingleFile(file SensitiveFile) *MisconfigResult {
 
 		bodyStr := string(body)
 		evidence := fmt.Sprintf("File accessible at %s (Status: %d)", file.Path, resp.StatusCode)
-		
+
 		if len(bodyStr) > 100 {
 			evidence += fmt.Sprintf(", Content preview: %s...", bodyStr[:100])
 		} else if len(bodyStr) > 0 {
@@ -692,7 +692,7 @@ func (m *MisconfigScanner) TestSecurityHeaders() []MisconfigResult {
 
 func (m *MisconfigScanner) analyzeSecurityHeader(resp *http.Response, secHeader SecurityHeader) *MisconfigResult {
 	headerValue := resp.Header.Get(secHeader.Name)
-	
+
 	if headerValue == "" {
 		if secHeader.Required {
 			return &MisconfigResult{
@@ -715,7 +715,7 @@ func (m *MisconfigScanner) analyzeSecurityHeader(resp *http.Response, secHeader 
 				break
 			}
 		}
-		
+
 		if !isValid {
 			return &MisconfigResult{
 				URL:         m.config.URL,
@@ -791,7 +791,7 @@ func (m *MisconfigScanner) ValidateHeaderValue(headerName, headerValue string) *
 						break
 					}
 				}
-				
+
 				if !isValid {
 					return &MisconfigResult{
 						URL:         m.config.URL,
@@ -849,7 +849,7 @@ func (m *MisconfigScanner) TestDefaultCredentials() []MisconfigResult {
 	resultsChan := make(chan MisconfigResult, len(CommonDefaultCredentials)*10)
 
 	loginEndpoints := m.discoverLoginEndpoints()
-	
+
 	for _, endpoint := range loginEndpoints {
 		for _, cred := range CommonDefaultCredentials {
 			wg.Add(1)
@@ -989,7 +989,7 @@ func (m *MisconfigScanner) testCredential(loginURL string, credential DefaultCre
 	}
 
 	bodyStr := string(body)
-	
+
 	if m.isSuccessfulLogin(resp, bodyStr) {
 		return &MisconfigResult{
 			URL:         loginURL,
@@ -1036,12 +1036,12 @@ func (m *MisconfigScanner) isSuccessfulLogin(resp *http.Response, body string) b
 	if resp.StatusCode == http.StatusFound || resp.StatusCode == http.StatusSeeOther || resp.StatusCode == http.StatusMovedPermanently {
 		location := resp.Header.Get("Location")
 		locationLower := strings.ToLower(location)
-		if strings.Contains(locationLower, "dashboard") || 
-		   strings.Contains(locationLower, "admin") ||
-		   strings.Contains(locationLower, "home") ||
-		   strings.Contains(locationLower, "main") ||
-		   strings.Contains(locationLower, "index") ||
-		   location != "" {
+		if strings.Contains(locationLower, "dashboard") ||
+			strings.Contains(locationLower, "admin") ||
+			strings.Contains(locationLower, "home") ||
+			strings.Contains(locationLower, "main") ||
+			strings.Contains(locationLower, "index") ||
+			location != "" {
 			return true
 		}
 	}
@@ -1106,7 +1106,7 @@ func (m *MisconfigScanner) testDefaultPage(pageURL string) *MisconfigResult {
 	}
 
 	bodyStr := string(body)
-	
+
 	if m.detectDefaultInstallation(bodyStr) {
 		return &MisconfigResult{
 			URL:         pageURL,
@@ -1144,7 +1144,7 @@ func (m *MisconfigScanner) DetectVersionDisclosure(response string) *MisconfigRe
 		if matches := pattern.FindStringSubmatch(response); len(matches) > 1 {
 			version := matches[1]
 			software := strings.Split(matches[0], "/")[0]
-			
+
 			return &MisconfigResult{
 				URL:         m.config.URL,
 				Category:    "defaults",
@@ -1246,7 +1246,7 @@ func (m *MisconfigScanner) analyzeServerBanner(resp *http.Response) *MisconfigRe
 		if matches := pattern.FindStringSubmatch(serverHeader); len(matches) > 1 {
 			version := matches[1]
 			software := strings.Split(matches[0], "/")[0]
-			
+
 			return &MisconfigResult{
 				URL:         m.config.URL,
 				Category:    "server-config",
@@ -1262,7 +1262,7 @@ func (m *MisconfigScanner) analyzeServerBanner(resp *http.Response) *MisconfigRe
 		strings.Contains(strings.ToLower(serverHeader), "nginx") ||
 		strings.Contains(strings.ToLower(serverHeader), "iis") ||
 		strings.Contains(strings.ToLower(serverHeader), "microsoft") {
-		
+
 		return &MisconfigResult{
 			URL:         m.config.URL,
 			Category:    "server-config",

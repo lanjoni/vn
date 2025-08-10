@@ -10,8 +10,7 @@ import (
 
 func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	
-	// Skip if test server is not running
+
 	config := scanner.MisconfigConfig{
 		URL:     baseURL,
 		Method:  "GET",
@@ -20,10 +19,9 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 		Threads: 5,
 		Tests:   []string{"files"},
 	}
-	
+
 	testScanner := scanner.NewMisconfigScanner(config)
-	
-	// Quick connectivity test
+
 	req, err := testScanner.GetClient().Get(baseURL + "/health")
 	if err != nil {
 		t.Skip("Test server not running, skipping E2E tests")
@@ -32,9 +30,9 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 	req.Body.Close()
 
 	testCases := []struct {
-		name          string
-		tests         []string
-		expectedCount int
+		name             string
+		tests            []string
+		expectedCount    int
 		expectedFindings []string
 	}{
 		{
@@ -106,7 +104,6 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 				t.Errorf("Expected at least %d results, got %d", tc.expectedCount, len(results))
 			}
 
-			// Verify expected findings are present
 			for _, expectedFinding := range tc.expectedFindings {
 				found := false
 				for _, result := range results {
@@ -120,7 +117,6 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 				}
 			}
 
-			// Verify all results have required fields
 			for i, result := range results {
 				if result.URL == "" {
 					t.Errorf("Result %d missing URL", i)
@@ -139,7 +135,6 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 				}
 			}
 
-			// Check for errors
 			errors := misconfigScanner.GetErrors()
 			if len(errors) > 0 {
 				t.Logf("Scanner errors (may be expected): %v", errors)
@@ -150,7 +145,7 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 
 func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	
+
 	config := scanner.MisconfigConfig{
 		URL:     baseURL,
 		Method:  "GET",
@@ -161,8 +156,7 @@ func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Test connectivity first
+
 	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
 		t.Skip("Test server not running, skipping E2E tests")
 		return
@@ -179,7 +173,7 @@ func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 			description: "Environment configuration file",
 		},
 		"/config.php": {
-			riskLevel:   "High", 
+			riskLevel:   "High",
 			description: "PHP configuration file",
 		},
 		"/backup.sql": {
@@ -197,22 +191,22 @@ func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 		for expectedPath, expected := range expectedFiles {
 			if strings.Contains(result.URL, expectedPath) {
 				foundFiles[expectedPath] = true
-				
+
 				if result.RiskLevel != expected.riskLevel {
-					t.Errorf("File %s: expected risk level %s, got %s", 
+					t.Errorf("File %s: expected risk level %s, got %s",
 						expectedPath, expected.riskLevel, result.RiskLevel)
 				}
-				
+
 				if !strings.Contains(result.Finding, expected.description) {
-					t.Errorf("File %s: expected finding to contain '%s', got '%s'", 
+					t.Errorf("File %s: expected finding to contain '%s', got '%s'",
 						expectedPath, expected.description, result.Finding)
 				}
-				
+
 				if result.Category != "sensitive-files" {
-					t.Errorf("File %s: expected category 'sensitive-files', got '%s'", 
+					t.Errorf("File %s: expected category 'sensitive-files', got '%s'",
 						expectedPath, result.Category)
 				}
-				
+
 				if result.Evidence == "" {
 					t.Errorf("File %s: missing evidence", expectedPath)
 				}
@@ -229,7 +223,7 @@ func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 
 func TestMisconfigScanner_E2E_SecurityHeaders(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	
+
 	config := scanner.MisconfigConfig{
 		URL:     baseURL + "/insecure-headers",
 		Method:  "GET",
@@ -240,8 +234,7 @@ func TestMisconfigScanner_E2E_SecurityHeaders(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Test connectivity first
+
 	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
 		t.Skip("Test server not running, skipping E2E tests")
 		return
@@ -251,7 +244,7 @@ func TestMisconfigScanner_E2E_SecurityHeaders(t *testing.T) {
 
 	expectedMissingHeaders := []string{
 		"X-Frame-Options",
-		"X-Content-Type-Options", 
+		"X-Content-Type-Options",
 		"Strict-Transport-Security",
 	}
 
@@ -260,14 +253,14 @@ func TestMisconfigScanner_E2E_SecurityHeaders(t *testing.T) {
 		for _, expectedHeader := range expectedMissingHeaders {
 			if strings.Contains(result.Finding, expectedHeader) {
 				foundHeaders[expectedHeader] = true
-				
+
 				if result.Category != "headers" {
-					t.Errorf("Header %s: expected category 'headers', got '%s'", 
+					t.Errorf("Header %s: expected category 'headers', got '%s'",
 						expectedHeader, result.Category)
 				}
-				
+
 				if !strings.Contains(result.Finding, "Missing security header") {
-					t.Errorf("Header %s: expected finding to contain 'Missing security header', got '%s'", 
+					t.Errorf("Header %s: expected finding to contain 'Missing security header', got '%s'",
 						expectedHeader, result.Finding)
 				}
 			}
@@ -283,7 +276,7 @@ func TestMisconfigScanner_E2E_SecurityHeaders(t *testing.T) {
 
 func TestMisconfigScanner_E2E_DefaultCredentials(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	
+
 	config := scanner.MisconfigConfig{
 		URL:     baseURL,
 		Method:  "GET",
@@ -294,8 +287,7 @@ func TestMisconfigScanner_E2E_DefaultCredentials(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Test connectivity first
+
 	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
 		t.Skip("Test server not running, skipping E2E tests")
 		return
@@ -308,20 +300,19 @@ func TestMisconfigScanner_E2E_DefaultCredentials(t *testing.T) {
 		return
 	}
 
-	// Verify that default credentials were accepted
 	foundDefaultCreds := false
 	for _, result := range results {
 		if strings.Contains(result.Finding, "Default credentials accepted") {
 			foundDefaultCreds = true
-			
+
 			if result.Category != "defaults" {
 				t.Errorf("Expected category 'defaults', got '%s'", result.Category)
 			}
-			
+
 			if result.RiskLevel != "High" {
 				t.Errorf("Expected risk level 'High', got '%s'", result.RiskLevel)
 			}
-			
+
 			if !strings.Contains(result.Evidence, "admin") {
 				t.Errorf("Expected evidence to contain 'admin', got '%s'", result.Evidence)
 			}
@@ -335,7 +326,7 @@ func TestMisconfigScanner_E2E_DefaultCredentials(t *testing.T) {
 
 func TestMisconfigScanner_E2E_DangerousHTTPMethods(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	
+
 	config := scanner.MisconfigConfig{
 		URL:     baseURL,
 		Method:  "GET",
@@ -346,8 +337,7 @@ func TestMisconfigScanner_E2E_DangerousHTTPMethods(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Test connectivity first
+
 	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
 		t.Skip("Test server not running, skipping E2E tests")
 		return
@@ -362,14 +352,14 @@ func TestMisconfigScanner_E2E_DangerousHTTPMethods(t *testing.T) {
 		for _, expectedMethod := range expectedMethods {
 			if strings.Contains(result.Finding, expectedMethod) {
 				foundMethods[expectedMethod] = true
-				
+
 				if result.Category != "server-config" {
-					t.Errorf("Method %s: expected category 'server-config', got '%s'", 
+					t.Errorf("Method %s: expected category 'server-config', got '%s'",
 						expectedMethod, result.Category)
 				}
-				
+
 				if result.RiskLevel != "High" {
-					t.Errorf("Method %s: expected risk level 'High', got '%s'", 
+					t.Errorf("Method %s: expected risk level 'High', got '%s'",
 						expectedMethod, result.RiskLevel)
 				}
 			}
@@ -385,7 +375,7 @@ func TestMisconfigScanner_E2E_DangerousHTTPMethods(t *testing.T) {
 
 func TestMisconfigScanner_E2E_DirectoryListing(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	
+
 	config := scanner.MisconfigConfig{
 		URL:     baseURL,
 		Method:  "GET",
@@ -396,8 +386,7 @@ func TestMisconfigScanner_E2E_DirectoryListing(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Test connectivity first
+
 	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
 		t.Skip("Test server not running, skipping E2E tests")
 		return
@@ -429,7 +418,7 @@ func TestMisconfigScanner_E2E_DirectoryListing(t *testing.T) {
 
 func TestMisconfigScanner_E2E_BackupFiles(t *testing.T) {
 	baseURL := "http://localhost:8080"
-	
+
 	config := scanner.MisconfigConfig{
 		URL:     baseURL,
 		Method:  "GET",
@@ -440,8 +429,7 @@ func TestMisconfigScanner_E2E_BackupFiles(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
-	// Test connectivity first
+
 	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
 		t.Skip("Test server not running, skipping E2E tests")
 		return
@@ -451,7 +439,7 @@ func TestMisconfigScanner_E2E_BackupFiles(t *testing.T) {
 
 	expectedBackupFiles := []string{
 		"config.bak",
-		"app.config.old", 
+		"app.config.old",
 		"database.sql.backup",
 	}
 
@@ -460,19 +448,19 @@ func TestMisconfigScanner_E2E_BackupFiles(t *testing.T) {
 		for _, expectedFile := range expectedBackupFiles {
 			if strings.Contains(result.URL, expectedFile) {
 				foundFiles[expectedFile] = true
-				
+
 				if result.Category != "sensitive-files" {
-					t.Errorf("Backup file %s: expected category 'sensitive-files', got '%s'", 
+					t.Errorf("Backup file %s: expected category 'sensitive-files', got '%s'",
 						expectedFile, result.Category)
 				}
-				
+
 				if result.Finding != "Backup file exposed" {
-					t.Errorf("Backup file %s: expected finding 'Backup file exposed', got '%s'", 
+					t.Errorf("Backup file %s: expected finding 'Backup file exposed', got '%s'",
 						expectedFile, result.Finding)
 				}
-				
+
 				if result.RiskLevel != "High" {
-					t.Errorf("Backup file %s: expected risk level 'High', got '%s'", 
+					t.Errorf("Backup file %s: expected risk level 'High', got '%s'",
 						expectedFile, result.RiskLevel)
 				}
 			}

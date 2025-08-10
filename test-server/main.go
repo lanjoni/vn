@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -59,7 +58,7 @@ func healthEndpoint(w http.ResponseWriter, r *http.Request) {
 
 func sensitiveFilesEndpoint(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	switch path {
 	case "/.env":
 		w.Header().Set("Content-Type", "text/plain")
@@ -146,10 +145,10 @@ func defaultCredentialsEndpoint(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
-		
+
 		if (username == "admin" && password == "admin") ||
-		   (username == "root" && password == "root") ||
-		   (username == "admin" && password == "password") {
+			(username == "root" && password == "root") ||
+			(username == "admin" && password == "password") {
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprint(w, `<html>
 <head><title>Admin Panel</title></head>
@@ -160,7 +159,7 @@ func defaultCredentialsEndpoint(w http.ResponseWriter, r *http.Request) {
 </html>`)
 			return
 		}
-		
+
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprint(w, `<html>
 <head><title>Login Failed</title></head>
@@ -171,7 +170,7 @@ func defaultCredentialsEndpoint(w http.ResponseWriter, r *http.Request) {
 </html>`)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, `<html>
 <head><title>Admin Login</title></head>
@@ -205,7 +204,7 @@ func versionDisclosureEndpoint(w http.ResponseWriter, r *http.Request) {
 
 func dangerousMethodsEndpoint(w http.ResponseWriter, r *http.Request) {
 	method := r.Method
-	
+
 	switch method {
 	case http.MethodPut:
 		w.Header().Set("Content-Type", "text/plain")
@@ -239,7 +238,7 @@ func dangerousMethodsEndpoint(w http.ResponseWriter, r *http.Request) {
 
 func infoLeakageEndpoint(w http.ResponseWriter, r *http.Request) {
 	file := r.URL.Query().Get("file")
-	
+
 	if file != "" {
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -259,7 +258,7 @@ at Server.processRequest(/var/www/html/server.js:789)
 </html>`, file)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	fmt.Fprint(w, `<html>
 <head><title>File Reader</title></head>
@@ -288,32 +287,31 @@ func defaultInstallEndpoint(w http.ResponseWriter, r *http.Request) {
 
 func backupFilesEndpoint(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-	
+
 	switch path {
 	case "/config.bak":
-		content, err := os.ReadFile("config.bak")
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write(content)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("database_password=secret123\napi_key=abc123def456\nserver_config=production"))
 	case "/app.config.old":
-		content, err := os.ReadFile("app.config.old")
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
 		w.Header().Set("Content-Type", "application/xml")
-		w.Write(content)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`<?xml version="1.0"?>
+<configuration>
+  <connectionStrings>
+    <add name="DefaultConnection" connectionString="Server=localhost;Database=prod;User=admin;Password=admin123;" />
+  </connectionStrings>
+</configuration>`))
 	case "/database.sql.backup":
-		content, err := os.ReadFile("database.sql.backup")
-		if err != nil {
-			http.NotFound(w, r)
-			return
-		}
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write(content)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`-- Database backup
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    username VARCHAR(50),
+    password VARCHAR(255)
+);
+INSERT INTO users VALUES (1, 'admin', 'admin123');`))
 	default:
 		http.NotFound(w, r)
 	}
@@ -325,25 +323,24 @@ func main() {
 	http.HandleFunc("/search", vulnerableEndpoint)
 	http.HandleFunc("/user", vulnerableEndpoint)
 	http.HandleFunc("/health", healthEndpoint)
-	
+
 	http.HandleFunc("/.env", sensitiveFilesEndpoint)
 	http.HandleFunc("/config.php", sensitiveFilesEndpoint)
 	http.HandleFunc("/web.config", sensitiveFilesEndpoint)
 	http.HandleFunc("/backup.sql", sensitiveFilesEndpoint)
 	http.HandleFunc("/robots.txt", sensitiveFilesEndpoint)
 	http.HandleFunc("/uploads/", directoryListingEndpoint)
-	
+
 	http.HandleFunc("/insecure-headers", insecureHeadersEndpoint)
 	http.HandleFunc("/secure-headers", secureHeadersEndpoint)
-	
+
 	http.HandleFunc("/admin", defaultCredentialsEndpoint)
 	http.HandleFunc("/admin/login", defaultCredentialsEndpoint)
 	http.HandleFunc("/version-error", versionDisclosureEndpoint)
 	http.HandleFunc("/default-install", defaultInstallEndpoint)
 	http.HandleFunc("/methods-test", dangerousMethodsEndpoint)
 	http.HandleFunc("/info-leak", infoLeakageEndpoint)
-	
-	// Backup files for testing file discovery
+
 	http.HandleFunc("/config.bak", backupFilesEndpoint)
 	http.HandleFunc("/app.config.old", backupFilesEndpoint)
 	http.HandleFunc("/database.sql.backup", backupFilesEndpoint)

@@ -45,7 +45,7 @@ Examples:
 		color.New(color.FgGreen, color.Bold).Printf("🔍 Starting Security Misconfiguration scan on: %s\n", url)
 		color.New(color.FgYellow).Printf("⚙️  Method: %s, Timeout: %ds, Threads: %d\n",
 			method, timeout, threads)
-		
+
 		if len(tests) > 0 {
 			color.New(color.FgYellow).Printf("🎯 Test Categories: %v\n", tests)
 		} else {
@@ -67,9 +67,9 @@ func DisplayMisconfigResults(results []scanner.MisconfigResult) {
 	}
 
 	sortedResults := SortResultsByRiskAndCategory(results)
-	
+
 	DisplaySummaryStatistics(results)
-	
+
 	color.New(color.FgRed, color.Bold).Printf(
 		"🚨 Found %d security misconfigurations:\n\n", len(results))
 
@@ -77,8 +77,6 @@ func DisplayMisconfigResults(results []scanner.MisconfigResult) {
 
 	color.New(color.FgRed, color.Bold).Println("⚠️  Please review and fix these misconfigurations!")
 }
-
-
 
 func GetRiskColor(riskLevel string) *color.Color {
 	switch riskLevel {
@@ -96,7 +94,7 @@ func GetRiskColor(riskLevel string) *color.Color {
 func SortResultsByRiskAndCategory(results []scanner.MisconfigResult) []scanner.MisconfigResult {
 	sortedResults := make([]scanner.MisconfigResult, len(results))
 	copy(sortedResults, results)
-	
+
 	for i := 0; i < len(sortedResults)-1; i++ {
 		for j := i + 1; j < len(sortedResults); j++ {
 			if ShouldSwapResults(sortedResults[i], sortedResults[j]) {
@@ -104,27 +102,27 @@ func SortResultsByRiskAndCategory(results []scanner.MisconfigResult) []scanner.M
 			}
 		}
 	}
-	
+
 	return sortedResults
 }
 
 func ShouldSwapResults(a, b scanner.MisconfigResult) bool {
 	riskPriority := map[string]int{"High": 3, "Medium": 2, "Low": 1}
-	
+
 	aPriority := riskPriority[a.RiskLevel]
 	bPriority := riskPriority[b.RiskLevel]
-	
+
 	if aPriority != bPriority {
 		return aPriority < bPriority
 	}
-	
+
 	return a.Category > b.Category
 }
 
 func DisplaySummaryStatistics(results []scanner.MisconfigResult) {
 	categoryStats := make(map[string]map[string]int)
 	totalByRisk := map[string]int{"High": 0, "Medium": 0, "Low": 0}
-	
+
 	for _, result := range results {
 		if categoryStats[result.Category] == nil {
 			categoryStats[result.Category] = make(map[string]int)
@@ -132,10 +130,10 @@ func DisplaySummaryStatistics(results []scanner.MisconfigResult) {
 		categoryStats[result.Category][result.RiskLevel]++
 		totalByRisk[result.RiskLevel]++
 	}
-	
+
 	color.New(color.FgCyan, color.Bold).Println("📊 Summary Statistics:")
 	fmt.Println()
-	
+
 	color.New(color.FgWhite, color.Bold).Println("Risk Level Distribution:")
 	for _, risk := range []string{"High", "Medium", "Low"} {
 		if count := totalByRisk[risk]; count > 0 {
@@ -144,12 +142,12 @@ func DisplaySummaryStatistics(results []scanner.MisconfigResult) {
 		}
 	}
 	fmt.Println()
-	
+
 	color.New(color.FgWhite, color.Bold).Println("Category Breakdown:")
 	for category, risks := range categoryStats {
 		categoryName := FormatCategoryName(category)
 		color.New(color.FgWhite).Printf("  %s:\n", categoryName)
-		
+
 		for _, risk := range []string{"High", "Medium", "Low"} {
 			if count := risks[risk]; count > 0 {
 				riskColor := GetRiskColor(risk)
@@ -178,7 +176,7 @@ func FormatCategoryName(category string) string {
 func DisplayResultsByCategory(results []scanner.MisconfigResult) {
 	currentCategory := ""
 	resultIndex := 1
-	
+
 	for _, result := range results {
 		if result.Category != currentCategory {
 			if currentCategory != "" {
@@ -189,7 +187,7 @@ func DisplayResultsByCategory(results []scanner.MisconfigResult) {
 			color.New(color.FgMagenta, color.Bold).Printf("🔍 %s Issues:\n", categoryName)
 			fmt.Println()
 		}
-		
+
 		DisplayEnhancedResult(resultIndex, result)
 		resultIndex++
 	}
@@ -197,15 +195,15 @@ func DisplayResultsByCategory(results []scanner.MisconfigResult) {
 
 func DisplayEnhancedResult(index int, result scanner.MisconfigResult) {
 	riskColor := GetRiskColor(result.RiskLevel)
-	
+
 	riskColor.Printf("[%d] %s Risk - %s\n", index, result.RiskLevel, result.Finding)
-	
+
 	color.New(color.FgWhite).Printf("   🌐 URL: %s\n", result.URL)
-	
+
 	color.New(color.FgYellow).Printf("   🔍 Evidence: %s\n", result.Evidence)
-	
+
 	color.New(color.FgCyan).Printf("   💡 Remediation: %s\n", result.Remediation)
-	
+
 	fmt.Println()
 }
 

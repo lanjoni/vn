@@ -17,7 +17,7 @@ func TestMisconfigScanner_ConcurrentPerformance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Simulate some processing time
 		time.Sleep(10 * time.Millisecond)
-		
+
 		switch r.URL.Path {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
@@ -80,7 +80,7 @@ func TestMisconfigScanner_ConcurrentPerformance(t *testing.T) {
 			}
 
 			misconfigScanner := scanner.NewMisconfigScanner(config)
-			
+
 			start := time.Now()
 			results := misconfigScanner.Scan()
 			duration := time.Since(start)
@@ -119,7 +119,7 @@ func TestMisconfigScanner_LargeScaleScanning(t *testing.T) {
 		} else {
 			time.Sleep(5 * time.Millisecond)
 		}
-		
+
 		if r.URL.Path == "/.env" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("API_KEY=test123"))
@@ -139,7 +139,7 @@ func TestMisconfigScanner_LargeScaleScanning(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
+
 	start := time.Now()
 	results := misconfigScanner.TestSensitiveFiles()
 	duration := time.Since(start)
@@ -183,12 +183,12 @@ func TestMisconfigScanner_MemoryUsage(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
+
 	// Run multiple scans to test memory cleanup
 	for i := 0; i < 10; i++ {
 		results := misconfigScanner.TestSensitiveFiles()
 		t.Logf("Memory test iteration %d: %d results", i, len(results))
-		
+
 		// Clear results to test memory cleanup
 		misconfigScanner.ClearResults()
 		misconfigScanner.ClearErrors()
@@ -216,32 +216,32 @@ func TestMisconfigScanner_ConcurrentSafety(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
+
 	// Run multiple concurrent scans to test thread safety
 	var wg sync.WaitGroup
 	numGoroutines := 5
-	
+
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			
+
 			// Each goroutine runs a full scan
 			results := misconfigScanner.Scan()
-			
+
 			// Verify results are valid
 			if results == nil {
 				t.Errorf("Goroutine %d got nil results", id)
 			}
-			
+
 			// Add some errors to test concurrent error handling
 			misconfigScanner.AddError(fmt.Errorf("test error from goroutine %d", id))
-			
+
 		}(i)
 	}
-	
+
 	wg.Wait()
-	
+
 	// Check that all errors were collected safely
 	errors := misconfigScanner.GetErrors()
 	if len(errors) < numGoroutines {
@@ -268,7 +268,7 @@ func TestMisconfigScanner_TimeoutHandling(t *testing.T) {
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
-	
+
 	start := time.Now()
 	results := misconfigScanner.TestSensitiveFiles()
 	duration := time.Since(start)
@@ -293,9 +293,7 @@ func TestMisconfigScanner_TimeoutHandling(t *testing.T) {
 	// Verify timeout errors are properly categorized
 	hasTimeoutError := false
 	for _, err := range errors {
-		if err != nil && (
-			err.Error() != "" && (
-				len(err.Error()) > 0)) {
+		if err != nil && (err.Error() != "" && (len(err.Error()) > 0)) {
 			hasTimeoutError = true
 			break
 		}
@@ -326,11 +324,11 @@ func TestMisconfigScanner_ResourceCleanupPerformance(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		misconfigScanner := scanner.NewMisconfigScanner(config)
 		results := misconfigScanner.Scan()
-		
+
 		if results == nil {
 			t.Errorf("Scan %d returned nil results", i)
 		}
-		
+
 		// Force cleanup
 		misconfigScanner.ClearResults()
 		misconfigScanner.ClearErrors()

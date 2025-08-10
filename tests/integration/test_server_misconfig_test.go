@@ -7,7 +7,6 @@ import (
 )
 
 func TestMisconfigTestServerEndpoints(t *testing.T) {
-	// Test cases for misconfiguration test server endpoints
 	testCases := []struct {
 		name           string
 		endpoint       string
@@ -15,7 +14,6 @@ func TestMisconfigTestServerEndpoints(t *testing.T) {
 		expectedStatus int
 		expectedBody   string
 	}{
-		// Sensitive files testing (Requirement 1.1)
 		{
 			name:           "Exposed .env file",
 			endpoint:       "/.env",
@@ -44,8 +42,7 @@ func TestMisconfigTestServerEndpoints(t *testing.T) {
 			expectedStatus: 200,
 			expectedBody:   "database_password=secret123",
 		},
-		
-		// Security headers testing (Requirement 2.1)
+
 		{
 			name:           "Missing security headers",
 			endpoint:       "/insecure-headers",
@@ -53,8 +50,7 @@ func TestMisconfigTestServerEndpoints(t *testing.T) {
 			expectedStatus: 200,
 			expectedBody:   "missing security headers",
 		},
-		
-		// Default credentials testing (Requirement 3.1)
+
 		{
 			name:           "Admin login form",
 			endpoint:       "/admin",
@@ -69,8 +65,7 @@ func TestMisconfigTestServerEndpoints(t *testing.T) {
 			expectedStatus: 500,
 			expectedBody:   "Apache/2.4.41 (Ubuntu)",
 		},
-		
-		// Server configuration testing (Requirement 4.1)
+
 		{
 			name:           "Information leakage",
 			endpoint:       "/info-leak?file=test.txt",
@@ -113,7 +108,6 @@ func TestMisconfigTestServerEndpoints(t *testing.T) {
 }
 
 func TestMisconfigTestServerHTTPMethods(t *testing.T) {
-	// Test dangerous HTTP methods (Requirement 4.1)
 	testCases := []struct {
 		name           string
 		method         string
@@ -175,7 +169,6 @@ func TestMisconfigTestServerHTTPMethods(t *testing.T) {
 				t.Errorf("Expected body to contain '%s', got '%s'", tc.expectedBody, bodyStr)
 			}
 
-			// Special check for OPTIONS method to verify Allow header contains dangerous methods
 			if tc.method == "OPTIONS" {
 				allowHeader := resp.Header.Get("Allow")
 				expectedMethods := []string{"PUT", "DELETE", "TRACE"}
@@ -190,7 +183,6 @@ func TestMisconfigTestServerHTTPMethods(t *testing.T) {
 }
 
 func TestMisconfigTestServerSecurityHeaders(t *testing.T) {
-	// Test security headers scenarios (Requirement 2.1)
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	t.Run("Insecure headers endpoint missing security headers", func(t *testing.T) {
@@ -201,7 +193,6 @@ func TestMisconfigTestServerSecurityHeaders(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		// Check that security headers are missing
 		securityHeaders := []string{
 			"X-Frame-Options",
 			"X-Content-Type-Options",
@@ -216,7 +207,6 @@ func TestMisconfigTestServerSecurityHeaders(t *testing.T) {
 			}
 		}
 
-		// Should have Server header for version disclosure
 		if resp.Header.Get("Server") == "" {
 			t.Error("Expected Server header to be present for version disclosure testing")
 		}
@@ -230,7 +220,6 @@ func TestMisconfigTestServerSecurityHeaders(t *testing.T) {
 		}
 		defer resp.Body.Close()
 
-		// Check that all security headers are present
 		expectedHeaders := map[string]string{
 			"X-Frame-Options":           "DENY",
 			"X-Content-Type-Options":    "nosniff",
@@ -249,7 +238,7 @@ func TestMisconfigTestServerSecurityHeaders(t *testing.T) {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
 		(len(s) > 0 && len(substr) > 0 && findSubstring(s, substr)))
 }
 
