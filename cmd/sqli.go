@@ -41,8 +41,8 @@ Examples:
 			Threads: threads,
 		}
 
-		color.New(color.FgGreen, color.Bold).Printf("🔍 Starting SQL Injection scan on: %s\n", url) // #nosec G104
-		color.New(color.FgYellow).Printf("⚙️  Method: %s, Timeout: %ds, Threads: %d\n\n",          // #nosec G104
+		color.New(color.FgGreen, color.Bold).Printf("🔍 Starting SQL Injection scan on: %s\n", url)
+		color.New(color.FgYellow).Printf("⚙️  Method: %s, Timeout: %ds, Threads: %d\n\n",
 			method, timeout, threads)
 
 		sqlScanner := scanner.NewSQLiScanner(config)
@@ -54,25 +54,25 @@ Examples:
 
 func displaySQLiResults(results []scanner.SQLiResult) {
 	if len(results) == 0 {
-		color.New(color.FgGreen, color.Bold).Println("✅ No SQL injection vulnerabilities found!") // #nosec G104
+		color.New(color.FgGreen, color.Bold).Println("✅ No SQL injection vulnerabilities found!")
 		return
 	}
 
-	color.New(color.FgRed, color.Bold).Printf( // #nosec G104
+	color.New(color.FgRed, color.Bold).Printf(
 		"🚨 Found %d potential SQL injection vulnerabilities:\n\n", len(results))
 
 	for i, result := range results {
-		color.New(color.FgRed, color.Bold).Printf("[%d] SQL Injection Detected\n", i+1) // #nosec G104
-		color.New(color.FgWhite).Printf("   URL: %s\n", result.URL)                     // #nosec G104
-		color.New(color.FgWhite).Printf("   Parameter: %s\n", result.Parameter)         // #nosec G104
-		color.New(color.FgWhite).Printf("   Payload: %s\n", result.Payload)             // #nosec G104
-		color.New(color.FgWhite).Printf("   Method: %s\n", result.Method)               // #nosec G104
-		color.New(color.FgYellow).Printf("   Evidence: %s\n", result.Evidence)          // #nosec G104
-		color.New(color.FgCyan).Printf("   Risk Level: %s\n", result.RiskLevel)         // #nosec G104
+		color.New(color.FgRed, color.Bold).Printf("[%d] SQL Injection Detected\n", i+1)
+		color.New(color.FgWhite).Printf("   URL: %s\n", result.URL)
+		color.New(color.FgWhite).Printf("   Parameter: %s\n", result.Parameter)
+		color.New(color.FgWhite).Printf("   Payload: %s\n", result.Payload)
+		color.New(color.FgWhite).Printf("   Method: %s\n", result.Method)
+		color.New(color.FgYellow).Printf("   Evidence: %s\n", result.Evidence)
+		color.New(color.FgCyan).Printf("   Risk Level: %s\n", result.RiskLevel)
 		fmt.Println()
 	}
 
-	color.New(color.FgRed, color.Bold).Println("⚠️  Please review and fix these vulnerabilities!") // #nosec G104
+	color.New(color.FgRed, color.Bold).Println("⚠️  Please review and fix these vulnerabilities!")
 }
 
 func init() {

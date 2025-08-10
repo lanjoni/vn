@@ -76,6 +76,30 @@ func TestCLIIntegration(t *testing.T) {
 			expectVulns: false,
 		},
 		{
+			name:        "Misconfiguration scan",
+			args:        []string{"misconfig", "http://localhost:8080/"},
+			expectError: false,
+			expectVulns: false,
+		},
+		{
+			name:        "Misconfiguration scan with specific tests",
+			args:        []string{"misconfig", "http://localhost:8080/", "--tests", "files,headers"},
+			expectError: false,
+			expectVulns: false,
+		},
+		{
+			name:        "Misconfiguration scan with custom headers",
+			args:        []string{"misconfig", "http://localhost:8080/", "--headers", "User-Agent: VN-Scanner"},
+			expectError: false,
+			expectVulns: false,
+		},
+		{
+			name:        "Misconfiguration scan with threading",
+			args:        []string{"misconfig", "http://localhost:8080/", "--threads", "3", "--timeout", "5"},
+			expectError: false,
+			expectVulns: false,
+		},
+		{
 			name:        "Invalid URL",
 			args:        []string{"sqli", "invalid-url"},
 			expectError: false,
@@ -131,6 +155,7 @@ func TestCLIHelp(t *testing.T) {
 				"OWASP Top 10",
 				"sqli",
 				"xss",
+				"misconfig",
 			},
 		},
 		{
@@ -151,6 +176,17 @@ func TestCLIHelp(t *testing.T) {
 				"--method",
 				"--data",
 				"--params",
+			},
+		},
+		{
+			name: "Misconfiguration help",
+			args: []string{"misconfig", "--help"},
+			expectedOutput: []string{
+				"security misconfigurations",
+				"--method",
+				"--headers",
+				"--tests",
+				"--threads",
 			},
 		},
 	}
