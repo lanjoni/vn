@@ -1,4 +1,4 @@
-package scanner_test
+package scanner
 
 import (
 	"crypto/tls"
@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"vn/internal/scanner"
 )
 
 func TestMisconfigScanner_HTTPRequestErrorHandling(t *testing.T) {
@@ -62,7 +60,7 @@ func TestMisconfigScanner_HTTPRequestErrorHandling(t *testing.T) {
 				defer server.Close()
 			}
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -71,7 +69,7 @@ func TestMisconfigScanner_HTTPRequestErrorHandling(t *testing.T) {
 				Tests:   []string{"headers"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			misconfigScanner.TestSecurityHeaders()
 
 			errors := misconfigScanner.GetErrors()
@@ -101,7 +99,7 @@ func TestMisconfigScanner_HTTPRequestErrorHandling(t *testing.T) {
 }
 
 func TestMisconfigScanner_DNSErrorHandling(t *testing.T) {
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://nonexistent-domain-12345.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -110,7 +108,7 @@ func TestMisconfigScanner_DNSErrorHandling(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSensitiveFiles()
 
 	if len(results) > 0 {
@@ -144,7 +142,7 @@ func TestMisconfigScanner_ResponseSizeLimit(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -153,7 +151,7 @@ func TestMisconfigScanner_ResponseSizeLimit(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	_ = misconfigScanner.TestDirectoryListing("/")
 
 	errors := misconfigScanner.GetErrors()
@@ -180,7 +178,7 @@ func TestMisconfigScanner_InvalidUTF8Handling(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -189,7 +187,7 @@ func TestMisconfigScanner_InvalidUTF8Handling(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	result := misconfigScanner.TestDirectoryListing("/")
 
 	if result != nil {
@@ -223,7 +221,7 @@ func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -232,11 +230,11 @@ func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
-	results := []scanner.MisconfigResult{}
+	results := []MisconfigResult{}
 
-	envFile := scanner.SensitiveFile{Path: "/.env", Description: "Environment file", RiskLevel: "High", Method: "GET"}
+	envFile := SensitiveFile{Path: "/.env", Description: "Environment file", RiskLevel: "High", Method: "GET"}
 	if result := misconfigScanner.TestSingleFile(envFile); result != nil {
 		results = append(results, *result)
 	}
@@ -268,7 +266,7 @@ func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -277,7 +275,7 @@ func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 		Tests:   []string{"files", "headers", "defaults", "server"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.Scan()
 
 	if results == nil {
@@ -310,7 +308,7 @@ func TestMisconfigScanner_PanicRecovery(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -319,7 +317,7 @@ func TestMisconfigScanner_PanicRecovery(t *testing.T) {
 		Tests:   []string{"files", "headers", "defaults", "server"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	results := misconfigScanner.Scan()
 
@@ -347,7 +345,7 @@ func TestMisconfigScanner_ResourceCleanup(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -356,7 +354,7 @@ func TestMisconfigScanner_ResourceCleanup(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	for i := 0; i < 5; i++ {
 		results := misconfigScanner.TestSensitiveFiles()
@@ -376,7 +374,7 @@ func TestMisconfigScanner_ResourceCleanup(t *testing.T) {
 }
 
 func TestMisconfigScanner_ErrorClearance(t *testing.T) {
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://nonexistent-domain-12345.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -385,7 +383,7 @@ func TestMisconfigScanner_ErrorClearance(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	misconfigScanner.TestSensitiveFiles()
 
@@ -415,7 +413,7 @@ func TestMisconfigScanner_TLSErrorHandling(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -424,7 +422,7 @@ func TestMisconfigScanner_TLSErrorHandling(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{

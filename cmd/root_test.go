@@ -1,4 +1,4 @@
-package cmd_test
+package cmd
 
 import (
 	"bytes"
@@ -6,8 +6,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"vn/cmd"
 )
 
 func TestRootCmd(t *testing.T) {
@@ -15,7 +13,7 @@ func TestRootCmd(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	rootCmd := cmd.GetRootCmd()
+	rootCmd := GetRootCmd()
 	rootCmd.SetArgs([]string{"--help"})
 
 	err := rootCmd.Execute()
@@ -34,6 +32,7 @@ func TestRootCmd(t *testing.T) {
 		"OWASP Top 10",
 		"SQL Injection Testing",
 		"sqli",
+		"misconfig",
 		"help",
 	}
 
@@ -45,7 +44,7 @@ func TestRootCmd(t *testing.T) {
 }
 
 func TestRootCmdVersion(t *testing.T) {
-	rootCmd := cmd.GetRootCmd()
+	rootCmd := GetRootCmd()
 	rootCmd.SetArgs([]string{})
 
 	var buf bytes.Buffer
@@ -58,7 +57,7 @@ func TestRootCmdVersion(t *testing.T) {
 }
 
 func TestGlobalFlags(t *testing.T) {
-	rootCmd := cmd.GetRootCmd()
+	rootCmd := GetRootCmd()
 	flags := rootCmd.PersistentFlags()
 
 	verboseFlag := flags.Lookup("verbose")
@@ -78,7 +77,7 @@ func TestGlobalFlags(t *testing.T) {
 }
 
 func TestAvailableCommands(t *testing.T) {
-	rootCmd := cmd.GetRootCmd()
+	rootCmd := GetRootCmd()
 	commands := rootCmd.Commands()
 
 	commandNames := make([]string, len(commands))
@@ -86,7 +85,7 @@ func TestAvailableCommands(t *testing.T) {
 		commandNames[i] = cmd.Name()
 	}
 
-	expectedCommands := []string{"sqli", "xss", "completion", "help"}
+	expectedCommands := []string{"sqli", "xss", "misconfig", "completion", "help"}
 
 	for _, expected := range expectedCommands {
 		found := false

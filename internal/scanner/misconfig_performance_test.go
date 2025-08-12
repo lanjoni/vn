@@ -1,4 +1,4 @@
-package scanner_test
+package scanner
 
 import (
 	"fmt"
@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"vn/internal/scanner"
 )
 
 func TestMisconfigScanner_ConcurrentPerformance(t *testing.T) {
@@ -70,7 +68,7 @@ func TestMisconfigScanner_ConcurrentPerformance(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -79,7 +77,7 @@ func TestMisconfigScanner_ConcurrentPerformance(t *testing.T) {
 				Tests:   []string{"files", "headers", "defaults", "server"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 
 			start := time.Now()
 			results := misconfigScanner.Scan()
@@ -129,7 +127,7 @@ func TestMisconfigScanner_LargeScaleScanning(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -138,7 +136,7 @@ func TestMisconfigScanner_LargeScaleScanning(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	start := time.Now()
 	results := misconfigScanner.TestSensitiveFiles()
@@ -173,7 +171,7 @@ func TestMisconfigScanner_MemoryUsage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -182,7 +180,7 @@ func TestMisconfigScanner_MemoryUsage(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	// Run multiple scans to test memory cleanup
 	for i := 0; i < 10; i++ {
@@ -206,7 +204,7 @@ func TestMisconfigScanner_ConcurrentSafety(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -215,7 +213,7 @@ func TestMisconfigScanner_ConcurrentSafety(t *testing.T) {
 		Tests:   []string{"files", "headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	// Run multiple concurrent scans to test thread safety
 	var wg sync.WaitGroup
@@ -258,7 +256,7 @@ func TestMisconfigScanner_TimeoutHandling(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -267,7 +265,7 @@ func TestMisconfigScanner_TimeoutHandling(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	start := time.Now()
 	results := misconfigScanner.TestSensitiveFiles()
@@ -311,7 +309,7 @@ func TestMisconfigScanner_ResourceCleanupPerformance(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -322,7 +320,7 @@ func TestMisconfigScanner_ResourceCleanupPerformance(t *testing.T) {
 
 	// Run many scans in sequence to test resource cleanup
 	for i := 0; i < 20; i++ {
-		misconfigScanner := scanner.NewMisconfigScanner(config)
+		misconfigScanner := NewMisconfigScanner(config)
 		results := misconfigScanner.Scan()
 
 		if results == nil {
@@ -347,7 +345,7 @@ func BenchmarkMisconfigScanner_FullScan(b *testing.B) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -358,7 +356,7 @@ func BenchmarkMisconfigScanner_FullScan(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		misconfigScanner := scanner.NewMisconfigScanner(config)
+		misconfigScanner := NewMisconfigScanner(config)
 		results := misconfigScanner.Scan()
 		if len(results) == 0 {
 			b.Error("Expected some results in benchmark")
@@ -377,7 +375,7 @@ func BenchmarkMisconfigScanner_SensitiveFiles(b *testing.B) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -386,7 +384,7 @@ func BenchmarkMisconfigScanner_SensitiveFiles(b *testing.B) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

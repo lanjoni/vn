@@ -1,4 +1,4 @@
-package scanner_test
+package scanner
 
 import (
 	"fmt"
@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"vn/internal/scanner"
 )
 
 func TestMisconfigScanner_TestSensitiveFiles(t *testing.T) {
@@ -55,7 +53,7 @@ func TestMisconfigScanner_TestSensitiveFiles(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -64,7 +62,7 @@ func TestMisconfigScanner_TestSensitiveFiles(t *testing.T) {
 				Tests:   []string{"files"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestSensitiveFiles()
 
 			if len(results) != tt.expectedCount {
@@ -134,7 +132,7 @@ func TestMisconfigScanner_TestDirectoryListing(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -143,7 +141,7 @@ func TestMisconfigScanner_TestDirectoryListing(t *testing.T) {
 				Tests:   []string{"files"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			result := misconfigScanner.TestDirectoryListing("/uploads")
 
 			if tt.expectedResult {
@@ -209,7 +207,7 @@ func TestMisconfigScanner_TestBackupFiles(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -218,7 +216,7 @@ func TestMisconfigScanner_TestBackupFiles(t *testing.T) {
 				Tests:   []string{"files"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestBackupFiles()
 
 			if len(results) != tt.expectedCount {
@@ -278,7 +276,7 @@ func TestMisconfigScanner_DetectDirectoryListing(t *testing.T) {
 		},
 	}
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -287,7 +285,7 @@ func TestMisconfigScanner_DetectDirectoryListing(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -367,7 +365,7 @@ func TestMisconfigScanner_TestSecurityHeaders(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -376,7 +374,7 @@ func TestMisconfigScanner_TestSecurityHeaders(t *testing.T) {
 				Tests:   []string{"headers"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestSecurityHeaders()
 
 			if len(results) != tt.expectedCount {
@@ -459,7 +457,7 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 				testURL = server.URL
 			}
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     testURL,
 				Method:  "GET",
 				Headers: []string{},
@@ -468,7 +466,7 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 				Tests:   []string{"headers"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 
 			// For HTTPS tests, we need to mock the HTTP response since we can't make real HTTPS calls to test servers
 			if tt.url == "https://example.com" {
@@ -598,7 +596,7 @@ func TestMisconfigScanner_ValidateHeaderValue(t *testing.T) {
 		},
 	}
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "https://example.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -607,7 +605,7 @@ func TestMisconfigScanner_ValidateHeaderValue(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -684,7 +682,7 @@ func TestMisconfigScanner_DetectLoginForm(t *testing.T) {
 		},
 	}
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -693,7 +691,7 @@ func TestMisconfigScanner_DetectLoginForm(t *testing.T) {
 		Tests:   []string{"defaults"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -814,7 +812,7 @@ func TestMisconfigScanner_TestDefaultCredentials(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -823,7 +821,7 @@ func TestMisconfigScanner_TestDefaultCredentials(t *testing.T) {
 				Tests:   []string{"defaults"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestDefaultCredentials()
 
 			if len(results) != tt.expectedCount {
@@ -904,7 +902,7 @@ func TestMisconfigScanner_TestDefaultPages(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -913,7 +911,7 @@ func TestMisconfigScanner_TestDefaultPages(t *testing.T) {
 				Tests:   []string{"defaults"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestDefaultPages()
 
 			if len(results) != tt.expectedCount {
@@ -994,7 +992,7 @@ func TestMisconfigScanner_DetectVersionDisclosure(t *testing.T) {
 		},
 	}
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -1003,7 +1001,7 @@ func TestMisconfigScanner_DetectVersionDisclosure(t *testing.T) {
 		Tests:   []string{"defaults"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1088,7 +1086,7 @@ func TestMisconfigScanner_DetectDefaultInstallation(t *testing.T) {
 		},
 	}
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -1097,7 +1095,7 @@ func TestMisconfigScanner_DetectDefaultInstallation(t *testing.T) {
 		Tests:   []string{"defaults"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1165,7 +1163,7 @@ func TestMisconfigScanner_TestHTTPMethods(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -1174,7 +1172,7 @@ func TestMisconfigScanner_TestHTTPMethods(t *testing.T) {
 				Tests:   []string{"server-config"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestHTTPMethods()
 
 			if len(results) != tt.expectedCount {
@@ -1269,7 +1267,7 @@ func TestMisconfigScanner_TestServerBanner(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -1278,7 +1276,7 @@ func TestMisconfigScanner_TestServerBanner(t *testing.T) {
 				Tests:   []string{"server-config"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			result := misconfigScanner.TestServerBanner()
 
 			if tt.expectedResult {
@@ -1376,7 +1374,7 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -1385,7 +1383,7 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 				Tests:   []string{"server-config"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestErrorMessages()
 
 			if len(results) != tt.expectedCount {
@@ -1481,7 +1479,7 @@ func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 			}))
 			defer server.Close()
 
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
@@ -1490,7 +1488,7 @@ func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 				Tests:   []string{"server-config"},
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			results := misconfigScanner.TestInsecureRedirects()
 
 			if len(results) < tt.expectedMinCount {
@@ -1522,7 +1520,7 @@ func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 func TestMisconfigScanner_Scan(t *testing.T) {
 	tests := []struct {
 		name               string
-		config             scanner.MisconfigConfig
+		config             MisconfigConfig
 		serverResponses    map[string]string
 		serverHeaders      map[string]string
 		expectedCount      int
@@ -1530,7 +1528,7 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 	}{
 		{
 			name: "full scan with all test categories",
-			config: scanner.MisconfigConfig{
+			config: MisconfigConfig{
 				URL:     "",
 				Method:  "GET",
 				Headers: []string{},
@@ -1550,7 +1548,7 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 		},
 		{
 			name: "scan with specific test categories",
-			config: scanner.MisconfigConfig{
+			config: MisconfigConfig{
 				URL:     "",
 				Method:  "GET",
 				Headers: []string{},
@@ -1567,7 +1565,7 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 		},
 		{
 			name: "scan with only files test",
-			config: scanner.MisconfigConfig{
+			config: MisconfigConfig{
 				URL:     "",
 				Method:  "GET",
 				Headers: []string{},
@@ -1585,7 +1583,7 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 		},
 		{
 			name: "concurrent execution with multiple threads",
-			config: scanner.MisconfigConfig{
+			config: MisconfigConfig{
 				URL:     "",
 				Method:  "GET",
 				Headers: []string{},
@@ -1625,7 +1623,7 @@ func TestMisconfigScanner_Scan(t *testing.T) {
 			// Update config with server URL
 			tt.config.URL = server.URL
 
-			misconfigScanner := scanner.NewMisconfigScanner(tt.config)
+			misconfigScanner := NewMisconfigScanner(tt.config)
 			results := misconfigScanner.Scan()
 
 			if len(results) < tt.expectedCount {
@@ -1674,7 +1672,7 @@ func TestMisconfigScanner_ConcurrentExecution(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -1683,11 +1681,11 @@ func TestMisconfigScanner_ConcurrentExecution(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	// Run multiple scans concurrently to test thread safety
 	var wg sync.WaitGroup
-	results := make([][]scanner.MisconfigResult, 3)
+	results := make([][]MisconfigResult, 3)
 
 	for i := 0; i < 3; i++ {
 		wg.Add(1)
@@ -1754,7 +1752,7 @@ func TestMisconfigScanner_ShouldRunTest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := scanner.MisconfigConfig{
+			config := MisconfigConfig{
 				URL:     "http://example.com",
 				Method:  "GET",
 				Headers: []string{},
@@ -1763,7 +1761,7 @@ func TestMisconfigScanner_ShouldRunTest(t *testing.T) {
 				Tests:   tt.configTests,
 			}
 
-			misconfigScanner := scanner.NewMisconfigScanner(config)
+			misconfigScanner := NewMisconfigScanner(config)
 			result := misconfigScanner.ShouldRunTest(tt.testCategory)
 
 			if result != tt.expected {
@@ -1775,7 +1773,7 @@ func TestMisconfigScanner_ShouldRunTest(t *testing.T) {
 }
 
 func TestMisconfigScanner_ResultAggregation(t *testing.T) {
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -1784,7 +1782,7 @@ func TestMisconfigScanner_ResultAggregation(t *testing.T) {
 		Tests:   []string{},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	// Test initial state
 	results := misconfigScanner.GetResults()
@@ -1793,7 +1791,7 @@ func TestMisconfigScanner_ResultAggregation(t *testing.T) {
 	}
 
 	// Test adding results
-	result1 := scanner.MisconfigResult{
+	result1 := MisconfigResult{
 		URL:         "http://example.com/.env",
 		Category:    "sensitive-files",
 		Finding:     "Sensitive file exposed",
@@ -1802,7 +1800,7 @@ func TestMisconfigScanner_ResultAggregation(t *testing.T) {
 		Remediation: "Remove file",
 	}
 
-	result2 := scanner.MisconfigResult{
+	result2 := MisconfigResult{
 		URL:         "http://example.com",
 		Category:    "headers",
 		Finding:     "Missing security header",
@@ -1828,7 +1826,7 @@ func TestMisconfigScanner_ResultAggregation(t *testing.T) {
 }
 
 func TestMisconfigScanner_ThreadSafety(t *testing.T) {
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -1837,7 +1835,7 @@ func TestMisconfigScanner_ThreadSafety(t *testing.T) {
 		Tests:   []string{},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	// Test concurrent result addition
 	var wg sync.WaitGroup
@@ -1849,7 +1847,7 @@ func TestMisconfigScanner_ThreadSafety(t *testing.T) {
 		go func(goroutineID int) {
 			defer wg.Done()
 			for j := 0; j < resultsPerGoroutine; j++ {
-				result := scanner.MisconfigResult{
+				result := MisconfigResult{
 					URL:         fmt.Sprintf("http://example.com/test-%d-%d", goroutineID, j),
 					Category:    "test",
 					Finding:     fmt.Sprintf("Test finding %d-%d", goroutineID, j),

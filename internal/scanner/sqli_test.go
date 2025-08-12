@@ -1,23 +1,21 @@
-package scanner_test
+package scanner
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"vn/internal/scanner"
 )
 
 func TestNewSQLiScanner(t *testing.T) {
-	config := scanner.SQLiConfig{
+	config := SQLiConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
 
-	sqliScanner := scanner.NewSQLiScanner(config)
+	sqliScanner := NewSQLiScanner(config)
 
 	if sqliScanner.GetConfig().URL != config.URL {
 		t.Errorf("Expected URL %s, got %s", config.URL, sqliScanner.GetConfig().URL)
@@ -33,13 +31,13 @@ func TestNewSQLiScanner(t *testing.T) {
 }
 
 func TestDetectSQLError(t *testing.T) {
-	config := scanner.SQLiConfig{
+	config := SQLiConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	sqliScanner := scanner.NewSQLiScanner(config)
+	sqliScanner := NewSQLiScanner(config)
 
 	testCases := []struct {
 		name     string
@@ -99,13 +97,13 @@ func TestDetectSQLError(t *testing.T) {
 }
 
 func TestDetectUnionSuccess(t *testing.T) {
-	config := scanner.SQLiConfig{
+	config := SQLiConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	sqliScanner := scanner.NewSQLiScanner(config)
+	sqliScanner := NewSQLiScanner(config)
 
 	testCases := []struct {
 		name     string
@@ -150,13 +148,13 @@ func TestDetectUnionSuccess(t *testing.T) {
 }
 
 func TestDetectNoSQLError(t *testing.T) {
-	config := scanner.SQLiConfig{
+	config := SQLiConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	sqliScanner := scanner.NewSQLiScanner(config)
+	sqliScanner := NewSQLiScanner(config)
 
 	testCases := []struct {
 		name     string
@@ -221,7 +219,7 @@ func TestSQLiScannerIntegration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.SQLiConfig{
+	config := SQLiConfig{
 		URL:     server.URL + "?id=1",
 		Method:  "GET",
 		Params:  []string{"id"},
@@ -229,7 +227,7 @@ func TestSQLiScannerIntegration(t *testing.T) {
 		Threads: 2,
 	}
 
-	sqliScanner := scanner.NewSQLiScanner(config)
+	sqliScanner := NewSQLiScanner(config)
 	results := sqliScanner.Scan()
 
 	if len(results) == 0 {
@@ -253,14 +251,14 @@ func TestSQLiScannerIntegration(t *testing.T) {
 }
 
 func TestSQLiPayloads(t *testing.T) {
-	config := scanner.SQLiConfig{
+	config := SQLiConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
 
-	sqliScanner := scanner.NewSQLiScanner(config)
+	sqliScanner := NewSQLiScanner(config)
 	if sqliScanner == nil {
 		t.Error("Expected scanner to be created successfully")
 	}
@@ -271,13 +269,13 @@ func TestSQLiPayloads(t *testing.T) {
 }
 
 func TestSQLiAnalyzeResponse(t *testing.T) {
-	config := scanner.SQLiConfig{
+	config := SQLiConfig{
 		URL:     "http://test.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	sqliScanner := scanner.NewSQLiScanner(config)
+	sqliScanner := NewSQLiScanner(config)
 
 	testCases := []struct {
 		name        string

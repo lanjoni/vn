@@ -1,4 +1,4 @@
-package scanner_test
+package scanner
 
 import (
 	"net/http"
@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"vn/internal/scanner"
 )
 
 func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
@@ -17,7 +15,7 @@ func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -26,7 +24,7 @@ func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
 		Tests:   []string{"files", "headers", "defaults"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	// Test individual components instead of full scan to avoid backup file URL issues
 	sensitiveResults := misconfigScanner.TestSensitiveFiles()
@@ -61,7 +59,7 @@ func TestMisconfigScanner_EdgeCases_MalformedHTML(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -70,7 +68,7 @@ func TestMisconfigScanner_EdgeCases_MalformedHTML(t *testing.T) {
 		Tests:   []string{"defaults"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestDefaultCredentials()
 
 	// Should handle malformed HTML gracefully
@@ -92,7 +90,7 @@ func TestMisconfigScanner_EdgeCases_SpecialCharacters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -101,7 +99,7 @@ func TestMisconfigScanner_EdgeCases_SpecialCharacters(t *testing.T) {
 		Tests:   []string{"defaults"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestDefaultPages()
 
 	// Should handle special characters gracefully
@@ -125,7 +123,7 @@ func TestMisconfigScanner_EdgeCases_VeryLongURLs(t *testing.T) {
 	longPath := "/" + strings.Repeat("a", 2000)
 	longURL := server.URL + longPath
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     longURL,
 		Method:  "GET",
 		Headers: []string{},
@@ -134,7 +132,7 @@ func TestMisconfigScanner_EdgeCases_VeryLongURLs(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSensitiveFiles()
 
 	// Should handle very long URLs gracefully
@@ -166,7 +164,7 @@ func TestMisconfigScanner_EdgeCases_RedirectLoops(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL + "/redirect1",
 		Method:  "GET",
 		Headers: []string{},
@@ -175,7 +173,7 @@ func TestMisconfigScanner_EdgeCases_RedirectLoops(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSecurityHeaders()
 
 	// Should handle redirect loops gracefully
@@ -199,7 +197,7 @@ func TestMisconfigScanner_EdgeCases_InvalidHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -208,7 +206,7 @@ func TestMisconfigScanner_EdgeCases_InvalidHeaders(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSecurityHeaders()
 
 	// Should detect invalid header values
@@ -243,7 +241,7 @@ func TestMisconfigScanner_EdgeCases_BinaryContent(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -252,7 +250,7 @@ func TestMisconfigScanner_EdgeCases_BinaryContent(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSensitiveFiles()
 
 	// Should handle binary content gracefully
@@ -275,7 +273,7 @@ func TestMisconfigScanner_EdgeCases_HTTPSWithSelfSignedCert(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -284,7 +282,7 @@ func TestMisconfigScanner_EdgeCases_HTTPSWithSelfSignedCert(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestHTTPSEnforcement()
 
 	// Should handle self-signed certificates (scanner uses InsecureSkipVerify)
@@ -309,7 +307,7 @@ func TestMisconfigScanner_EdgeCases_CaseInsensitiveHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -318,7 +316,7 @@ func TestMisconfigScanner_EdgeCases_CaseInsensitiveHeaders(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSecurityHeaders()
 
 	// Should handle case-insensitive headers properly
@@ -345,7 +343,7 @@ func TestMisconfigScanner_EdgeCases_MultipleHeaderValues(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -354,7 +352,7 @@ func TestMisconfigScanner_EdgeCases_MultipleHeaderValues(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSecurityHeaders()
 
 	// Should handle multiple header values gracefully
@@ -378,7 +376,7 @@ func TestMisconfigScanner_EdgeCases_ZeroTimeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -387,7 +385,7 @@ func TestMisconfigScanner_EdgeCases_ZeroTimeout(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSensitiveFiles()
 
 	// Should handle zero timeout gracefully (may cause immediate timeouts)
@@ -415,7 +413,7 @@ func TestMisconfigScanner_EdgeCases_NegativeThreads(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -424,7 +422,7 @@ func TestMisconfigScanner_EdgeCases_NegativeThreads(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSensitiveFiles()
 
 	// Should handle negative threads gracefully
@@ -448,7 +446,7 @@ func TestMisconfigScanner_EdgeCases_EmptyTestCategories(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -457,7 +455,7 @@ func TestMisconfigScanner_EdgeCases_EmptyTestCategories(t *testing.T) {
 		Tests:   []string{},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.Scan()
 
 	// Should run all tests when no specific tests are specified
@@ -483,7 +481,7 @@ func TestMisconfigScanner_EdgeCases_InvalidTestCategories(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -492,7 +490,7 @@ func TestMisconfigScanner_EdgeCases_InvalidTestCategories(t *testing.T) {
 		Tests:   []string{"invalid", "nonexistent", "fake"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.Scan()
 
 	// Should handle invalid test categories gracefully (likely no results)
@@ -514,7 +512,7 @@ func TestMisconfigScanner_EdgeCases_MalformedCustomHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:    server.URL,
 		Method: "GET",
 		Headers: []string{
@@ -529,7 +527,7 @@ func TestMisconfigScanner_EdgeCases_MalformedCustomHeaders(t *testing.T) {
 		Tests:   []string{"headers"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.TestSecurityHeaders()
 
 	// Should handle malformed custom headers gracefully

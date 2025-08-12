@@ -1,4 +1,4 @@
-package scanner_test
+package scanner
 
 import (
 	"net/http"
@@ -6,8 +6,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"vn/internal/scanner"
 )
 
 func TestMisconfigScanner_IntegratedErrorHandling(t *testing.T) {
@@ -33,7 +31,7 @@ func TestMisconfigScanner_IntegratedErrorHandling(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -42,7 +40,7 @@ func TestMisconfigScanner_IntegratedErrorHandling(t *testing.T) {
 		Tests:   []string{"files", "headers", "defaults", "server"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 	results := misconfigScanner.Scan()
 
 	if len(results) == 0 {
@@ -98,7 +96,7 @@ func TestMisconfigScanner_IntegratedErrorHandling(t *testing.T) {
 }
 
 func TestMisconfigScanner_ErrorRecoveryAndContinuation(t *testing.T) {
-	config := scanner.MisconfigConfig{
+	config := MisconfigConfig{
 		URL:     "http://nonexistent-domain-12345.com",
 		Method:  "GET",
 		Headers: []string{},
@@ -107,7 +105,7 @@ func TestMisconfigScanner_ErrorRecoveryAndContinuation(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	misconfigScanner := scanner.NewMisconfigScanner(config)
+	misconfigScanner := NewMisconfigScanner(config)
 
 	results1 := misconfigScanner.TestSensitiveFiles()
 	errors1 := misconfigScanner.GetErrors()
@@ -131,7 +129,7 @@ func TestMisconfigScanner_ErrorRecoveryAndContinuation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	newConfig := scanner.MisconfigConfig{
+	newConfig := MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
@@ -140,7 +138,7 @@ func TestMisconfigScanner_ErrorRecoveryAndContinuation(t *testing.T) {
 		Tests:   []string{"files"},
 	}
 
-	newScanner := scanner.NewMisconfigScanner(newConfig)
+	newScanner := NewMisconfigScanner(newConfig)
 	results2 := newScanner.TestSensitiveFiles()
 	errors2 := newScanner.GetErrors()
 

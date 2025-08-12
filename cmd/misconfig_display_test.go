@@ -1,9 +1,8 @@
-package cmd_test
+package cmd
 
 import (
 	"testing"
 
-	"vn/cmd"
 	"vn/internal/scanner"
 )
 
@@ -21,7 +20,7 @@ func TestGetRiskColor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			color := cmd.GetRiskColor(tt.riskLevel)
+			color := GetRiskColor(tt.riskLevel)
 			if color == nil {
 				t.Errorf("GetRiskColor(%s) returned nil", tt.riskLevel)
 			}
@@ -38,7 +37,7 @@ func TestSortResultsByRiskAndCategory(t *testing.T) {
 		{Category: "sensitive-files", RiskLevel: "Low", Finding: "Low files"},
 	}
 
-	sorted := cmd.SortResultsByRiskAndCategory(results)
+	sorted := SortResultsByRiskAndCategory(results)
 
 	if sorted[0].RiskLevel != "High" || sorted[1].RiskLevel != "High" {
 		t.Errorf("High risk items should come first, got: %s, %s", sorted[0].RiskLevel, sorted[1].RiskLevel)
@@ -88,7 +87,7 @@ func TestShouldSwapResults(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := cmd.ShouldSwapResults(tt.a, tt.b)
+			result := ShouldSwapResults(tt.a, tt.b)
 			if result != tt.expected {
 				t.Errorf("ShouldSwapResults() = %v, expected %v", result, tt.expected)
 			}
@@ -110,7 +109,7 @@ func TestFormatCategoryName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.category, func(t *testing.T) {
-			result := cmd.FormatCategoryName(tt.category)
+			result := FormatCategoryName(tt.category)
 			if result != tt.expected {
 				t.Errorf("FormatCategoryName(%s) = %s, expected %s", tt.category, result, tt.expected)
 			}
@@ -144,15 +143,15 @@ func TestDisplayFunctionsDoNotPanic(t *testing.T) {
 		}
 	}()
 
-	cmd.DisplaySummaryStatistics(results)
-	cmd.DisplayMisconfigResults(results)
-	cmd.DisplayResultsByCategory(results)
-	cmd.DisplayEnhancedResult(1, results[0])
+	DisplaySummaryStatistics(results)
+	DisplayMisconfigResults(results)
+	DisplayResultsByCategory(results)
+	DisplayEnhancedResult(1, results[0])
 
 	var emptyResults []scanner.MisconfigResult
-	cmd.DisplayMisconfigResults(emptyResults)
-	cmd.DisplaySummaryStatistics(emptyResults)
-	cmd.DisplayResultsByCategory(emptyResults)
+	DisplayMisconfigResults(emptyResults)
+	DisplaySummaryStatistics(emptyResults)
+	DisplayResultsByCategory(emptyResults)
 }
 
 func TestSortingLogic(t *testing.T) {
@@ -164,7 +163,7 @@ func TestSortingLogic(t *testing.T) {
 		{Category: "n-category", RiskLevel: "Medium", Finding: "Should be after first medium"},
 	}
 
-	sorted := cmd.SortResultsByRiskAndCategory(results)
+	sorted := SortResultsByRiskAndCategory(results)
 
 	if sorted[0].RiskLevel != "High" || sorted[1].RiskLevel != "High" {
 		t.Errorf("First two should be High risk, got: %s, %s", sorted[0].RiskLevel, sorted[1].RiskLevel)
@@ -192,14 +191,14 @@ func TestCategoryNameFormatting(t *testing.T) {
 	}
 
 	for input, expected := range categories {
-		result := cmd.FormatCategoryName(input)
+		result := FormatCategoryName(input)
 		if result != expected {
 			t.Errorf("FormatCategoryName(%s) = %s, expected %s", input, result, expected)
 		}
 	}
 
 	unknown := "unknown-category"
-	result := cmd.FormatCategoryName(unknown)
+	result := FormatCategoryName(unknown)
 	if result != unknown {
 		t.Errorf("FormatCategoryName(%s) = %s, expected %s", unknown, result, unknown)
 	}

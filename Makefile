@@ -31,7 +31,7 @@ test: test-unit test-integration ## Run all tests
 
 test-unit: ## Run unit tests
 	@echo "Running unit tests..."
-	go test -v -race ./tests/unit/...
+	go test -v -race ./cmd ./internal/scanner
 
 test-integration: ## Run integration tests
 	@echo "Running integration tests..."
