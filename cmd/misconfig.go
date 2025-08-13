@@ -10,6 +10,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	riskHigh   = "High"
+	riskMedium = "Medium"
+	riskLow    = "Low"
+
+	riskHighPriority   = 3
+	riskMediumPriority = 2
+	riskLowPriority    = 1
+)
+
 var misconfigCmd = &cobra.Command{
 	Use:   "misconfig [URL]",
 	Short: "Test for security misconfigurations",
@@ -80,11 +90,11 @@ func DisplayMisconfigResults(results []scanner.MisconfigResult) {
 
 func GetRiskColor(riskLevel string) *color.Color {
 	switch riskLevel {
-	case "High":
+	case riskHigh:
 		return color.New(color.FgRed, color.Bold)
-	case "Medium":
+	case riskMedium:
 		return color.New(color.FgYellow, color.Bold)
-	case "Low":
+	case riskLow:
 		return color.New(color.FgGreen, color.Bold)
 	default:
 		return color.New(color.FgWhite)
@@ -107,7 +117,11 @@ func SortResultsByRiskAndCategory(results []scanner.MisconfigResult) []scanner.M
 }
 
 func ShouldSwapResults(a, b scanner.MisconfigResult) bool {
-	riskPriority := map[string]int{"High": 3, "Medium": 2, "Low": 1}
+	riskPriority := map[string]int{
+		riskHigh:   riskHighPriority,
+		riskMedium: riskMediumPriority,
+		riskLow:    riskLowPriority,
+	}
 
 	aPriority := riskPriority[a.RiskLevel]
 	bPriority := riskPriority[b.RiskLevel]
@@ -121,7 +135,7 @@ func ShouldSwapResults(a, b scanner.MisconfigResult) bool {
 
 func DisplaySummaryStatistics(results []scanner.MisconfigResult) {
 	categoryStats := make(map[string]map[string]int)
-	totalByRisk := map[string]int{"High": 0, "Medium": 0, "Low": 0}
+	totalByRisk := map[string]int{riskHigh: 0, riskMedium: 0, riskLow: 0}
 
 	for _, result := range results {
 		if categoryStats[result.Category] == nil {
@@ -135,7 +149,7 @@ func DisplaySummaryStatistics(results []scanner.MisconfigResult) {
 	fmt.Println()
 
 	color.New(color.FgWhite, color.Bold).Println("Risk Level Distribution:")
-	for _, risk := range []string{"High", "Medium", "Low"} {
+	for _, risk := range []string{riskHigh, riskMedium, riskLow} {
 		if count := totalByRisk[risk]; count > 0 {
 			riskColor := GetRiskColor(risk)
 			riskColor.Printf("  %s: %d findings\n", risk, count)
@@ -148,7 +162,7 @@ func DisplaySummaryStatistics(results []scanner.MisconfigResult) {
 		categoryName := FormatCategoryName(category)
 		color.New(color.FgWhite).Printf("  %s:\n", categoryName)
 
-		for _, risk := range []string{"High", "Medium", "Low"} {
+		for _, risk := range []string{riskHigh, riskMedium, riskLow} {
 			if count := risks[risk]; count > 0 {
 				riskColor := GetRiskColor(risk)
 				riskColor.Printf("    %s: %d\n", risk, count)
@@ -214,5 +228,6 @@ func init() {
 	misconfigCmd.Flags().StringSliceP("headers", "H", []string{}, "Custom headers (format: 'Name: Value')")
 	misconfigCmd.Flags().IntP("timeout", "t", 10, "Request timeout in seconds")
 	misconfigCmd.Flags().IntP("threads", "T", 5, "Number of concurrent threads")
-	misconfigCmd.Flags().StringSliceP("tests", "", []string{}, "Specific test categories to run (files,headers,defaults,server)")
+	misconfigCmd.Flags().StringSliceP("tests", "", []string{},
+		"Specific test categories to run (files,headers,defaults,server)")
 }

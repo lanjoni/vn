@@ -112,7 +112,7 @@ func (x *XSSScanner) Scan() []XSSResult {
 			x.config.Params = append(x.config.Params, param)
 		}
 
-		if x.config.Method == "POST" && x.config.Data != "" {
+		if x.config.Method == httpMethodPOST && x.config.Data != "" {
 			formData, err := url.ParseQuery(x.config.Data)
 			if err == nil {
 				for param := range formData {
@@ -160,7 +160,7 @@ func (x *XSSScanner) testPayload(param, payload, payloadType string) {
 		parsedURL.RawQuery = query.Encode()
 
 		req, err = http.NewRequest("GET", parsedURL.String(), nil)
-	} else if x.config.Method == "POST" {
+	} else if x.config.Method == httpMethodPOST {
 		var postData string
 		if x.config.Data != "" {
 			formValues, parseErr := url.ParseQuery(x.config.Data)
@@ -173,7 +173,7 @@ func (x *XSSScanner) testPayload(param, payload, payloadType string) {
 			postData = url.Values{param: {payload}}.Encode()
 		}
 
-		req, err = http.NewRequest("POST", x.config.URL, strings.NewReader(postData))
+		req, err = http.NewRequest(httpMethodPOST, x.config.URL, strings.NewReader(postData))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 
@@ -263,13 +263,13 @@ func (x *XSSScanner) GetRiskLevel(payload string) string {
 
 func (x *XSSScanner) getRiskLevel(payload string) string {
 	if strings.Contains(strings.ToLower(payload), "script") {
-		return "High"
+		return riskHigh
 	}
 	if strings.Contains(strings.ToLower(payload), "javascript:") {
-		return "High"
+		return riskHigh
 	}
 	if strings.Contains(strings.ToLower(payload), "onerror") || strings.Contains(strings.ToLower(payload), "onload") {
-		return "Medium"
+		return riskMedium
 	}
-	return "Low"
+	return riskLow
 }
