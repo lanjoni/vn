@@ -38,7 +38,7 @@ jobs:
       run: go mod verify
     
     - name: Run unit tests
-      run: go test -v -race -coverprofile=coverage.out ./tests/unit/...
+      run: go test -v -race -coverprofile=coverage.out ./cmd/... ./internal/...
     
     - name: Run short tests
       run: go test -short -v ./...
@@ -202,7 +202,7 @@ jobs:
       run: go mod download
     
     - name: Run benchmarks
-      run: go test -bench=. -benchmem -run=^# ./tests/integration/... | tee benchmark.txt
+      run: go test -bench=. -benchmem -run=^# ./internal/... ./tests/integration/... | tee benchmark.txt
     
     - name: Upload benchmark results
       uses: actions/upload-artifact@v4
