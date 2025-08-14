@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 	"testing"
+	"time"
 
 	"vn/internal/scanner"
 	"vn/tests/shared"
@@ -109,7 +110,6 @@ func createMisconfigTestHandler() http.Handler {
 			w.Write([]byte(errorContent))
 
 		default:
-			// Intentionally missing security headers
 			w.Header().Set("Server", "Apache/2.4.41")
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
@@ -131,7 +131,7 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 		t.Fatalf("Failed to get test server: %v", err)
 	}
 	defer serverPool.ReleaseServer(server)
-	
+
 	shared.WaitForServerReady(t, server)
 
 	config := scanner.MisconfigConfig{
@@ -319,8 +319,8 @@ func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
 	errorRecoveryHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
 
-		if requestCount%3 == 0 {
-			w.WriteHeader(http.StatusRequestTimeout)
+		if (r.URL.Path == "/config.php" || r.URL.Path == "/backup.sql") && requestCount%2 == 0 {
+			time.Sleep(timeouts.HTTPRequest + 100*time.Millisecond)
 			return
 		}
 
