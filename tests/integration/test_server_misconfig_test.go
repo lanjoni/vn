@@ -1,12 +1,19 @@
+//go:build integration
+// +build integration
+
 package integration
 
 import (
+	"context"
 	"net/http"
 	"testing"
-	"time"
+
+	"vn/tests/shared"
 )
 
 func TestMisconfigTestServerEndpoints(t *testing.T) {
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
 	testCases := []struct {
 		name           string
 		endpoint       string
@@ -76,11 +83,14 @@ func TestMisconfigTestServerEndpoints(t *testing.T) {
 	}
 
 	baseURL := "http://localhost:8080"
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: timeouts.HTTPRequest}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest(tc.method, baseURL+tc.endpoint, nil)
+			ctx, cancel := context.WithTimeout(context.Background(), timeouts.HTTPRequest)
+			defer cancel()
+
+			req, err := http.NewRequestWithContext(ctx, tc.method, baseURL+tc.endpoint, nil)
 			if err != nil {
 				t.Fatalf("Failed to create request: %v", err)
 			}
@@ -108,6 +118,8 @@ func TestMisconfigTestServerEndpoints(t *testing.T) {
 }
 
 func TestMisconfigTestServerHTTPMethods(t *testing.T) {
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
 	testCases := []struct {
 		name           string
 		method         string
@@ -141,11 +153,14 @@ func TestMisconfigTestServerHTTPMethods(t *testing.T) {
 	}
 
 	baseURL := "http://localhost:8080/methods-test"
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: timeouts.HTTPRequest}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest(tc.method, baseURL, nil)
+			ctx, cancel := context.WithTimeout(context.Background(), timeouts.HTTPRequest)
+			defer cancel()
+
+			req, err := http.NewRequestWithContext(ctx, tc.method, baseURL, nil)
 			if err != nil {
 				t.Fatalf("Failed to create request: %v", err)
 			}
@@ -183,10 +198,16 @@ func TestMisconfigTestServerHTTPMethods(t *testing.T) {
 }
 
 func TestMisconfigTestServerSecurityHeaders(t *testing.T) {
-	client := &http.Client{Timeout: 5 * time.Second}
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	client := &http.Client{Timeout: timeouts.HTTPRequest}
 
 	t.Run("Insecure headers endpoint missing security headers", func(t *testing.T) {
-		resp, err := client.Get("http://localhost:8080/insecure-headers")
+		ctx, cancel := context.WithTimeout(context.Background(), timeouts.HTTPRequest)
+		defer cancel()
+
+		req, _ := http.NewRequestWithContext(ctx, "GET", "http://localhost:8080/insecure-headers", nil)
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Skipf("Test server not running, skipping test: %v", err)
 			return
@@ -213,7 +234,11 @@ func TestMisconfigTestServerSecurityHeaders(t *testing.T) {
 	})
 
 	t.Run("Secure headers endpoint has all security headers", func(t *testing.T) {
-		resp, err := client.Get("http://localhost:8080/secure-headers")
+		ctx, cancel := context.WithTimeout(context.Background(), timeouts.HTTPRequest)
+		defer cancel()
+
+		req, _ := http.NewRequestWithContext(ctx, "GET", "http://localhost:8080/secure-headers", nil)
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Skipf("Test server not running, skipping test: %v", err)
 			return

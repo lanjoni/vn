@@ -1,30 +1,221 @@
+//go:build e2e
+// +build e2e
+
 package e2e
 
 import (
+	"fmt"
+	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"vn/internal/scanner"
+	"vn/tests/shared"
+	"vn/tests/shared/testserver"
 )
 
-func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
-	baseURL := "http://localhost:8080"
+const (
+	riskHigh               = "High"
+	categorySensitiveFiles = "sensitive-files"
+)
 
-	config := scanner.MisconfigConfig{
-		URL:     baseURL,
-		Method:  "GET",
-		Headers: []string{},
-		Timeout: 10 * time.Second,
-		Threads: 5,
-		Tests:   []string{"files"},
+var sharedServerPool testserver.ServerPool
+
+func getE2EServerPool() testserver.ServerPool {
+	if sharedServerPool == nil {
+		sharedServerPool = testserver.NewServerPool()
+	}
+	return sharedServerPool
+}
+
+func createE2ETestHandler() http.Handler {
+	mux := http.NewServeMux()
+	
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"status": "ok", "message": "Test server is running"}`)
+	})
+
+	mux.HandleFunc("/.env", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("DB_PASSWORD=secret123\nAPI_KEY=abc123"))
+	})
+	
+	mux.HandleFunc("/config.php", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("<?php $db_pass = 'secret'; ?>"))
+	})
+	
+	mux.HandleFunc("/backup.sql", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("CREATE TABLE users (id INT, password VARCHAR(255));"))
+	})
+	
+	mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("User-agent: *\nDisallow: /admin"))
+	})
+	
+	mux.HandleFunc("/config.php.bak", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("database_password=secret123"))
+	})
+	
+	mux.HandleFunc("/index.html.old", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<?xml version="1.0"?><configuration><connectionStrings><add name="DefaultConnection" connectionString="Server=localhost;Database=prod;User=admin;Password=admin123;" /></connectionStrings></configuration>`))
+	})
+	
+	mux.HandleFunc("/database.sql.backup", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(50), password VARCHAR(255)); INSERT INTO users VALUES (1, 'admin', 'admin123');"))
+	})
+
+	mux.HandleFunc("/config.bak", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("database_password=secret123"))
+	})
+	
+	mux.HandleFunc("/app.config.old", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<?xml version="1.0"?><configuration><connectionStrings><add name="DefaultConnection" connectionString="Server=localhost;Database=prod;User=admin;Password=admin123;" /></connectionStrings></configuration>`))
+	})
+
+	mux.HandleFunc("/uploads/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		htmlContent := `<html><head><title>Index of /uploads</title></head><body>` +
+			`<h1>Index of /uploads</h1><pre><a href="../">Parent Directory</a></pre></body></html>`
+		w.Write([]byte(htmlContent))
+	})
+
+	isValidCredential := func(username, password string) bool {
+		validCreds := map[string]string{
+			"admin":         "admin",
+			"root":          "root",
+			"administrator": "administrator",
+			"guest":         "guest",
+			"test":          "test",
+			"user":          "user",
+		}
+		
+		if validPass, exists := validCreds[username]; exists && validPass == password {
+			return true
+		}
+		
+		if username == "admin" && (password == "password" || password == "") {
+			return true
+		}
+		
+		return false
 	}
 
-	testScanner := scanner.NewMisconfigScanner(config)
+	mux.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			username := r.FormValue("username")
+			password := r.FormValue("password")
+			if isValidCredential(username, password) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`<h1>Welcome to Dashboard</h1><a href="/logout">Logout</a>`))
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`<h1>Login Failed</h1><p>Invalid credentials</p>`))
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`<form method="post"><input name="username"><input type="password" name="password"></form>`))
+		}
+	})
 
-	req, err := testScanner.GetClient().Get(baseURL + "/health")
+	mux.HandleFunc("/admin/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			username := r.FormValue("username")
+			password := r.FormValue("password")
+			if isValidCredential(username, password) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`<h1>Admin Panel</h1><p>Login successful</p>`))
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`<h1>Login Failed</h1><p>Invalid credentials</p>`))
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`<form method="post"><input name="user"><input type="password" name="pass"></form>`))
+		}
+	})
+
+	mux.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			user := r.FormValue("user")
+			pass := r.FormValue("pass")
+			if isValidCredential(user, pass) {
+				w.Header().Set("Location", "/dashboard")
+				w.WriteHeader(http.StatusFound)
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`<p>Login failed</p>`))
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`<form action="/login" method="post"><input name="user"><input type="password" name="pass"></form>`))
+		}
+	})
+
+	mux.HandleFunc("/methods-test", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "PUT":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("PUT method is enabled"))
+		case "DELETE":
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("DELETE method is enabled"))
+		case "TRACE":
+			w.Header().Set("Content-Type", "message/http")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("TRACE /methods-test HTTP/1.1\r\n"))
+		case "OPTIONS":
+			w.Header().Set("Allow", "GET, POST, PUT, DELETE, TRACE, OPTIONS")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Methods allowed"))
+		default:
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		}
+	})
+
+	mux.HandleFunc("/insecure-headers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "Apache/2.4.41")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("<html><body><h1>Insecure Page</h1></body></html>"))
+	})
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "Apache/2.4.41")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
+
+	return mux
+}
+
+func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getE2EServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createE2ETestHandler(),
+		ConfigName: "e2e-test-server",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
 	if err != nil {
-		t.Skip("Test server not running, skipping E2E tests")
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
+
+	req, err := http.Get(server.URL + "/health")
+	if err != nil {
+		t.Skip("Test server not available, skipping E2E tests")
 		return
 	}
 	req.Body.Close()
@@ -38,7 +229,7 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 		{
 			name:          "Sensitive files detection",
 			tests:         []string{"files"},
-			expectedCount: 5, // .env, config.php, backup.sql, robots.txt, config.bak
+			expectedCount: 5,
 			expectedFindings: []string{
 				"Sensitive file exposed: Environment configuration file",
 				"Sensitive file exposed: PHP configuration file",
@@ -48,7 +239,7 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 		{
 			name:          "Security headers analysis",
 			tests:         []string{"headers"},
-			expectedCount: 3, // Missing X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security
+			expectedCount: 3,
 			expectedFindings: []string{
 				"Missing security header: X-Frame-Options",
 				"Missing security header: X-Content-Type-Options",
@@ -58,7 +249,7 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 		{
 			name:          "Default credentials testing",
 			tests:         []string{"defaults"},
-			expectedCount: 8, // Default credentials accepted for admin/admin, root/root, etc.
+			expectedCount: 8,
 			expectedFindings: []string{
 				"Default credentials accepted",
 			},
@@ -66,7 +257,7 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 		{
 			name:          "Server configuration testing",
 			tests:         []string{"server"},
-			expectedCount: 4, // PUT, DELETE, TRACE methods enabled
+			expectedCount: 4,
 			expectedFindings: []string{
 				"Dangerous HTTP method enabled: PUT",
 				"Dangerous HTTP method enabled: DELETE",
@@ -76,7 +267,7 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 		{
 			name:          "Full comprehensive scan",
 			tests:         []string{"files", "headers", "defaults", "server"},
-			expectedCount: 15, // Sum of all individual test results
+			expectedCount: 15,
 			expectedFindings: []string{
 				"Sensitive file exposed",
 				"Missing security header",
@@ -89,10 +280,10 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			config := scanner.MisconfigConfig{
-				URL:     baseURL,
+				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
-				Timeout: 15 * time.Second,
+				Timeout: timeouts.HTTPRequest,
 				Threads: 5,
 				Tests:   tc.tests,
 			}
@@ -144,21 +335,34 @@ func TestMisconfigScanner_E2E_TestServer(t *testing.T) {
 }
 
 func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
-	baseURL := "http://localhost:8080"
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getE2EServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createE2ETestHandler(),
+		ConfigName: "e2e-sensitive-files",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
-		URL:     baseURL,
+		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 10 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 3,
 		Tests:   []string{"files"},
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 
-	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
-		t.Skip("Test server not running, skipping E2E tests")
+	if _, err := misconfigScanner.GetClient().Get(server.URL + "/health"); err != nil {
+		t.Skip("Test server not available, skipping E2E tests")
 		return
 	}
 
@@ -169,15 +373,15 @@ func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 		description string
 	}{
 		"/.env": {
-			riskLevel:   "High",
+			riskLevel:   riskHigh,
 			description: "Environment configuration file",
 		},
 		"/config.php": {
-			riskLevel:   "High",
+			riskLevel:   riskHigh,
 			description: "PHP configuration file",
 		},
 		"/backup.sql": {
-			riskLevel:   "High",
+			riskLevel:   riskHigh,
 			description: "Database backup file",
 		},
 		"/robots.txt": {
@@ -202,9 +406,9 @@ func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 						expectedPath, expected.description, result.Finding)
 				}
 
-				if result.Category != "sensitive-files" {
-					t.Errorf("File %s: expected category 'sensitive-files', got '%s'",
-						expectedPath, result.Category)
+				if result.Category != categorySensitiveFiles {
+					t.Errorf("File %s: expected category '%s', got '%s'",
+						expectedPath, categorySensitiveFiles, result.Category)
 				}
 
 				if result.Evidence == "" {
@@ -222,21 +426,34 @@ func TestMisconfigScanner_E2E_SensitiveFilesDetailed(t *testing.T) {
 }
 
 func TestMisconfigScanner_E2E_SecurityHeaders(t *testing.T) {
-	baseURL := "http://localhost:8080"
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getE2EServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createE2ETestHandler(),
+		ConfigName: "e2e-security-headers",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
-		URL:     baseURL + "/insecure-headers",
+		URL:     server.URL + "/insecure-headers",
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 10 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 1,
 		Tests:   []string{"headers"},
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 
-	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
-		t.Skip("Test server not running, skipping E2E tests")
+	if _, err := misconfigScanner.GetClient().Get(server.URL + "/health"); err != nil {
+		t.Skip("Test server not available, skipping E2E tests")
 		return
 	}
 
@@ -275,21 +492,34 @@ func TestMisconfigScanner_E2E_SecurityHeaders(t *testing.T) {
 }
 
 func TestMisconfigScanner_E2E_DefaultCredentials(t *testing.T) {
-	baseURL := "http://localhost:8080"
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getE2EServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createE2ETestHandler(),
+		ConfigName: "e2e-default-credentials",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
-		URL:     baseURL,
+		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 15 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 3,
 		Tests:   []string{"defaults"},
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 
-	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
-		t.Skip("Test server not running, skipping E2E tests")
+	if _, err := misconfigScanner.GetClient().Get(server.URL + "/health"); err != nil {
+		t.Skip("Test server not available, skipping E2E tests")
 		return
 	}
 
@@ -309,12 +539,20 @@ func TestMisconfigScanner_E2E_DefaultCredentials(t *testing.T) {
 				t.Errorf("Expected category 'defaults', got '%s'", result.Category)
 			}
 
-			if result.RiskLevel != "High" {
-				t.Errorf("Expected risk level 'High', got '%s'", result.RiskLevel)
+			if result.RiskLevel != riskHigh {
+				t.Errorf("Expected risk level '%s', got '%s'", riskHigh, result.RiskLevel)
 			}
 
-			if !strings.Contains(result.Evidence, "admin") {
-				t.Errorf("Expected evidence to contain 'admin', got '%s'", result.Evidence)
+			validCredentials := []string{"admin", "root", "administrator", "guest", "test", "user"}
+			foundValidCred := false
+			for _, cred := range validCredentials {
+				if strings.Contains(result.Evidence, cred) {
+					foundValidCred = true
+					break
+				}
+			}
+			if !foundValidCred {
+				t.Errorf("Expected evidence to contain a valid credential, got '%s'", result.Evidence)
 			}
 		}
 	}
@@ -325,21 +563,34 @@ func TestMisconfigScanner_E2E_DefaultCredentials(t *testing.T) {
 }
 
 func TestMisconfigScanner_E2E_DangerousHTTPMethods(t *testing.T) {
-	baseURL := "http://localhost:8080"
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getE2EServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createE2ETestHandler(),
+		ConfigName: "e2e-dangerous-methods",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
-		URL:     baseURL,
+		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 10 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 2,
 		Tests:   []string{"server"},
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 
-	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
-		t.Skip("Test server not running, skipping E2E tests")
+	if _, err := misconfigScanner.GetClient().Get(server.URL + "/health"); err != nil {
+		t.Skip("Test server not available, skipping E2E tests")
 		return
 	}
 
@@ -358,9 +609,9 @@ func TestMisconfigScanner_E2E_DangerousHTTPMethods(t *testing.T) {
 						expectedMethod, result.Category)
 				}
 
-				if result.RiskLevel != "High" {
-					t.Errorf("Method %s: expected risk level 'High', got '%s'",
-						expectedMethod, result.RiskLevel)
+				if result.RiskLevel != riskHigh {
+					t.Errorf("Method %s: expected risk level '%s', got '%s'",
+						expectedMethod, riskHigh, result.RiskLevel)
 				}
 			}
 		}
@@ -374,21 +625,34 @@ func TestMisconfigScanner_E2E_DangerousHTTPMethods(t *testing.T) {
 }
 
 func TestMisconfigScanner_E2E_DirectoryListing(t *testing.T) {
-	baseURL := "http://localhost:8080"
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getE2EServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createE2ETestHandler(),
+		ConfigName: "e2e-directory-listing",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
-		URL:     baseURL,
+		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 10 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 1,
 		Tests:   []string{"files"},
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 
-	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
-		t.Skip("Test server not running, skipping E2E tests")
+	if _, err := misconfigScanner.GetClient().Get(server.URL + "/health"); err != nil {
+		t.Skip("Test server not available, skipping E2E tests")
 		return
 	}
 
@@ -399,8 +663,8 @@ func TestMisconfigScanner_E2E_DirectoryListing(t *testing.T) {
 		return
 	}
 
-	if result.Category != "sensitive-files" {
-		t.Errorf("Expected category 'sensitive-files', got '%s'", result.Category)
+	if result.Category != categorySensitiveFiles {
+		t.Errorf("Expected category '%s', got '%s'", categorySensitiveFiles, result.Category)
 	}
 
 	if result.Finding != "Directory listing enabled" {
@@ -417,29 +681,42 @@ func TestMisconfigScanner_E2E_DirectoryListing(t *testing.T) {
 }
 
 func TestMisconfigScanner_E2E_BackupFiles(t *testing.T) {
-	baseURL := "http://localhost:8080"
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getE2EServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createE2ETestHandler(),
+		ConfigName: "e2e-backup-files",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
-		URL:     baseURL,
+		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 10 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 3,
 		Tests:   []string{"files"},
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 
-	if _, err := misconfigScanner.GetClient().Get(baseURL + "/health"); err != nil {
-		t.Skip("Test server not running, skipping E2E tests")
+	if _, err := misconfigScanner.GetClient().Get(server.URL + "/health"); err != nil {
+		t.Skip("Test server not available, skipping E2E tests")
 		return
 	}
 
 	results := misconfigScanner.TestBackupFiles()
 
 	expectedBackupFiles := []string{
-		"config.bak",
-		"app.config.old",
+		"config.php.bak",
+		"index.html.old",
 		"database.sql.backup",
 	}
 
@@ -449,9 +726,9 @@ func TestMisconfigScanner_E2E_BackupFiles(t *testing.T) {
 			if strings.Contains(result.URL, expectedFile) {
 				foundFiles[expectedFile] = true
 
-				if result.Category != "sensitive-files" {
-					t.Errorf("Backup file %s: expected category 'sensitive-files', got '%s'",
-						expectedFile, result.Category)
+				if result.Category != categorySensitiveFiles {
+					t.Errorf("Backup file %s: expected category '%s', got '%s'",
+						expectedFile, categorySensitiveFiles, result.Category)
 				}
 
 				if result.Finding != "Backup file exposed" {
@@ -459,9 +736,9 @@ func TestMisconfigScanner_E2E_BackupFiles(t *testing.T) {
 						expectedFile, result.Finding)
 				}
 
-				if result.RiskLevel != "High" {
-					t.Errorf("Backup file %s: expected risk level 'High', got '%s'",
-						expectedFile, result.RiskLevel)
+				if result.RiskLevel != riskHigh {
+					t.Errorf("Backup file %s: expected risk level '%s', got '%s'",
+						expectedFile, riskHigh, result.RiskLevel)
 				}
 			}
 		}

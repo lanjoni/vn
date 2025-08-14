@@ -1,17 +1,20 @@
+//go:build integration
+// +build integration
+
 package integration
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"sync"
 	"testing"
-	"time"
 
 	"vn/internal/scanner"
+	"vn/tests/shared"
+	"vn/tests/shared/testserver"
 )
 
-func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func createMisconfigTestHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
@@ -31,7 +34,9 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 
 		case "/uploads/":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`<html><head><title>Index of /uploads</title></head><body><h1>Index of /uploads</h1><pre><a href="../">Parent Directory</a></pre></body></html>`))
+			htmlContent := `<html><head><title>Index of /uploads</title></head><body>` +
+				`<h1>Index of /uploads</h1><pre><a href="../">Parent Directory</a></pre></body></html>`
+			w.Write([]byte(htmlContent))
 
 		case "/admin":
 			if r.Method == "GET" {
@@ -72,7 +77,9 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 
 		case "/default.html":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`<html><head><title>Apache2 Ubuntu Default Page</title></head><body><h1>It works!</h1><p>This is the default welcome page</p></body></html>`))
+			defaultPageContent := `<html><head><title>Apache2 Ubuntu Default Page</title></head><body>` +
+				`<h1>It works!</h1><p>This is the default welcome page</p></body></html>`
+			w.Write([]byte(defaultPageContent))
 
 		case "/methods-test":
 			switch r.Method {
@@ -97,7 +104,9 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 
 		case "/error":
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`<html><body><h1>Application Error</h1><p>Error: Could not open file '/var/www/html/config.php'</p></body></html>`))
+			errorContent := `<html><body><h1>Application Error</h1><p>Error: ` +
+				`Could not open file '/var/www/html/config.php'</p></body></html>`
+			w.Write([]byte(errorContent))
 
 		default:
 			// Intentionally missing security headers
@@ -105,14 +114,31 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		}
-	}))
-	defer server.Close()
+	})
+}
+
+func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
+	timeouts := shared.GetOptimizedTimeouts()
+	serverPool := getSharedServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    createMisconfigTestHandler(),
+		ConfigName: "misconfig-full-workflow",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
+	
+	shared.WaitForServerReady(t, server)
 
 	config := scanner.MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 10 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 5,
 		Tests:   []string{"files", "headers", "defaults", "server"},
 	}
@@ -175,7 +201,9 @@ func TestMisconfigScanner_FullWorkflowIntegration(t *testing.T) {
 }
 
 func TestMisconfigScanner_WorkflowWithCustomHeaders(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	customHeadersHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") == "Bearer test-token" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Authenticated response"))
@@ -186,8 +214,20 @@ func TestMisconfigScanner_WorkflowWithCustomHeaders(t *testing.T) {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Unauthorized"))
 		}
-	}))
-	defer server.Close()
+	})
+
+	serverPool := getSharedServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    customHeadersHandler,
+		ConfigName: "misconfig-custom-headers",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
 		URL:    server.URL,
@@ -196,7 +236,7 @@ func TestMisconfigScanner_WorkflowWithCustomHeaders(t *testing.T) {
 			"Authorization: Bearer test-token",
 			"User-Agent: VN-Scanner",
 		},
-		Timeout: 5 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 3,
 		Tests:   []string{"headers"},
 	}
@@ -215,7 +255,9 @@ func TestMisconfigScanner_WorkflowWithCustomHeaders(t *testing.T) {
 }
 
 func TestMisconfigScanner_WorkflowWithDifferentMethods(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	methodsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "POST":
 			w.WriteHeader(http.StatusOK)
@@ -230,8 +272,20 @@ func TestMisconfigScanner_WorkflowWithDifferentMethods(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("GET response"))
 		}
-	}))
-	defer server.Close()
+	})
+
+	serverPool := getSharedServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    methodsHandler,
+		ConfigName: "misconfig-methods",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	methods := []string{"GET", "POST", "PUT", "DELETE"}
 
@@ -241,7 +295,7 @@ func TestMisconfigScanner_WorkflowWithDifferentMethods(t *testing.T) {
 				URL:     server.URL,
 				Method:  method,
 				Headers: []string{},
-				Timeout: 5 * time.Second,
+				Timeout: timeouts.HTTPRequest,
 				Threads: 2,
 				Tests:   []string{"server"},
 			}
@@ -259,18 +313,17 @@ func TestMisconfigScanner_WorkflowWithDifferentMethods(t *testing.T) {
 }
 
 func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
-	// Create a server that fails for some requests but succeeds for others
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
 	requestCount := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	errorRecoveryHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestCount++
 
-		// Fail every 3rd request
 		if requestCount%3 == 0 {
-			time.Sleep(2 * time.Second) // Cause timeout
+			w.WriteHeader(http.StatusRequestTimeout)
 			return
 		}
 
-		// Succeed for other requests
 		switch r.URL.Path {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
@@ -279,14 +332,26 @@ func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		}
-	}))
-	defer server.Close()
+	})
+
+	serverPool := getSharedServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    errorRecoveryHandler,
+		ConfigName: "misconfig-error-recovery",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 500 * time.Millisecond, // Short timeout to trigger failures
+		Timeout: timeouts.HTTPRequest,
 		Threads: 5,
 		Tests:   []string{"files", "headers"},
 	}
@@ -294,29 +359,27 @@ func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 	results := misconfigScanner.Scan()
 
-	// Should have some results despite errors
 	if len(results) == 0 {
 		t.Error("Expected some results despite intermittent failures")
 	}
 
-	// Should have collected errors
 	errors := misconfigScanner.GetErrors()
 	if len(errors) == 0 {
 		t.Error("Expected some errors from failed requests")
 	}
 
-	// Verify scanner continues working after errors
 	misconfigScanner.ClearErrors()
 	newResults := misconfigScanner.TestSensitiveFiles()
 
-	// Should still be able to get results
 	if len(newResults) == 0 {
 		t.Error("Scanner should continue working after errors")
 	}
 }
 
 func TestMisconfigScanner_WorkflowWithSpecificTests(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	specificTestsHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
@@ -333,8 +396,20 @@ func TestMisconfigScanner_WorkflowWithSpecificTests(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		}
-	}))
-	defer server.Close()
+	})
+
+	serverPool := getSharedServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    specificTestsHandler,
+		ConfigName: "misconfig-specific-tests",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	testCases := []struct {
 		name           string
@@ -386,7 +461,7 @@ func TestMisconfigScanner_WorkflowWithSpecificTests(t *testing.T) {
 				URL:     server.URL,
 				Method:  "GET",
 				Headers: []string{},
-				Timeout: 10 * time.Second,
+				Timeout: timeouts.HTTPRequest,
 				Threads: 3,
 				Tests:   tc.tests,
 			}
@@ -412,7 +487,6 @@ func TestMisconfigScanner_WorkflowWithSpecificTests(t *testing.T) {
 				t.Error("Expected server-config results")
 			}
 
-			// Verify only expected categories are present
 			if !tc.expectFiles && categories["sensitive-files"] {
 				t.Error("Unexpected sensitive-files results")
 			}
@@ -430,8 +504,9 @@ func TestMisconfigScanner_WorkflowWithSpecificTests(t *testing.T) {
 }
 
 func TestMisconfigScanner_WorkflowResultAggregation(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Return different responses for different paths
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	aggregationHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
@@ -451,21 +526,32 @@ func TestMisconfigScanner_WorkflowResultAggregation(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		}
-	}))
-	defer server.Close()
+	})
+
+	serverPool := getSharedServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    aggregationHandler,
+		ConfigName: "misconfig-aggregation",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 10 * time.Second,
+		Timeout: timeouts.HTTPRequest,
 		Threads: 5,
 		Tests:   []string{"files", "headers", "defaults"},
 	}
 
 	misconfigScanner := scanner.NewMisconfigScanner(config)
 
-	// Run scan multiple times to test result aggregation
 	allResults := []scanner.MisconfigResult{}
 
 	for i := 0; i < 3; i++ {
@@ -474,19 +560,15 @@ func TestMisconfigScanner_WorkflowResultAggregation(t *testing.T) {
 		allResults = append(allResults, results...)
 	}
 
-	// Verify results are consistent across runs
 	if len(allResults) == 0 {
 		t.Error("Expected results from multiple scan runs")
 	}
 
-	// Group results by finding to check consistency
 	findingCounts := make(map[string]int)
 	for _, result := range allResults {
 		findingCounts[result.Finding]++
 	}
 
-	// Each finding should appear consistently across runs (may be more than 3 due to multiple instances)
-	// The key is that the count should be divisible by 3 (number of runs)
 	for finding, count := range findingCounts {
 		if count%3 != 0 {
 			t.Errorf("Finding '%s' appeared %d times, expected multiple of 3", finding, count)
@@ -495,10 +577,9 @@ func TestMisconfigScanner_WorkflowResultAggregation(t *testing.T) {
 }
 
 func TestMisconfigScanner_WorkflowThreadSafety(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Add small delay to increase chance of race conditions
-		time.Sleep(10 * time.Millisecond)
-
+	t.Parallel()
+	timeouts := shared.GetOptimizedTimeouts()
+	threadSafetyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
@@ -507,19 +588,30 @@ func TestMisconfigScanner_WorkflowThreadSafety(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		}
-	}))
-	defer server.Close()
+	})
+
+	serverPool := getSharedServerPool()
+	serverConfig := testserver.ServerConfig{
+		Handler:    threadSafetyHandler,
+		ConfigName: "misconfig-thread-safety",
+		Timeout:    timeouts.ServerStart,
+	}
+
+	server, err := serverPool.GetServer(serverConfig)
+	if err != nil {
+		t.Fatalf("Failed to get test server: %v", err)
+	}
+	defer serverPool.ReleaseServer(server)
 
 	config := scanner.MisconfigConfig{
 		URL:     server.URL,
 		Method:  "GET",
 		Headers: []string{},
-		Timeout: 5 * time.Second,
-		Threads: 10, // High concurrency
+		Timeout: timeouts.HTTPRequest,
+		Threads: 10,
 		Tests:   []string{"files", "headers"},
 	}
 
-	// Run multiple scanners concurrently to test thread safety
 	numScanners := 5
 	results := make([][]scanner.MisconfigResult, numScanners)
 	errors := make([][]error, numScanners)
@@ -538,7 +630,6 @@ func TestMisconfigScanner_WorkflowThreadSafety(t *testing.T) {
 
 	wg.Wait()
 
-	// Verify all scanners completed successfully
 	for i, result := range results {
 		if result == nil {
 			t.Errorf("Scanner %d returned nil results", i)
@@ -548,7 +639,6 @@ func TestMisconfigScanner_WorkflowThreadSafety(t *testing.T) {
 		}
 	}
 
-	// Results should be consistent across scanners
 	expectedResultCount := len(results[0])
 	for i := 1; i < numScanners; i++ {
 		if len(results[i]) != expectedResultCount {

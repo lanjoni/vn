@@ -91,6 +91,56 @@ go build -o vn .
 
 ## Testing
 
+### Test Categories and Performance
+
+The project uses a categorized test system for optimal performance:
+
+| Category | Duration | Purpose | Command |
+|----------|----------|---------|---------|
+| **Unit Tests** | < 2s | Core logic testing | `make test-unit` |
+| **Fast Tests** | < 5s | Mock-based tests | `make test-fast` |
+| **Integration Tests** | < 30s | Local server tests | `make test-integration` |
+| **E2E Tests** | < 60s | Full workflow tests | `make test-e2e` |
+
+### Quick Test Commands
+
+```bash
+# Development workflow (fastest feedback)
+make test-quick          # Unit + Fast tests (~7s)
+
+# CI pipeline (comprehensive but efficient)
+make test-ci            # Unit + Fast + Integration (~35s)
+
+# Full test suite (all categories)
+make test               # All tests (~2m)
+
+# Individual categories
+make test-unit          # Unit tests only
+make test-fast          # Fast tests with mocks
+make test-integration   # Integration tests with local servers
+make test-e2e          # End-to-end workflow tests
+```
+
+### Test Scripts
+
+Convenient scripts are available in the `scripts/` directory:
+
+```bash
+# Quick development feedback
+./scripts/test-fast.sh
+
+# Full integration testing
+./scripts/test-integration.sh
+
+# Complete E2E testing
+./scripts/test-e2e.sh
+
+# CI-optimized testing
+./scripts/test-ci.sh
+```
+
+### Vulnerable Test Server
+
 A vulnerable test server is included for testing purposes:
 
 ```bash
@@ -103,6 +153,17 @@ go run main.go
 ./vn sqli http://localhost:8080/login --method POST --data "username=admin&password=secret"
 ./vn misconfig http://localhost:8080
 ```
+
+### Test Performance Optimizations
+
+The test suite has been optimized for speed and reliability:
+
+- **Shared Infrastructure**: Binary builds and test servers are reused across tests
+- **Parallel Execution**: Independent tests run concurrently using `t.Parallel()`
+- **Mock Services**: External dependencies replaced with fast local mocks
+- **Optimized Timeouts**: Reduced wait times for test environments
+- **Build Tags**: Selective test execution based on categories
+- **Resource Management**: Efficient cleanup and resource sharing
 
 ## SQL Injection Detection
 

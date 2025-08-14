@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -434,8 +435,14 @@ func TestMisconfigScanner_TLSErrorHandling(t *testing.T) {
 		Transport: transport,
 	}
 
-	req, _ := http.NewRequest("GET", server.URL, nil)
-	_, err := client.Do(req)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, _ := http.NewRequestWithContext(ctx, "GET", server.URL, nil)
+	resp, err := client.Do(req)
+	if resp != nil {
+		resp.Body.Close()
+	}
 
 	if err == nil {
 		t.Error("Expected TLS error but got none")

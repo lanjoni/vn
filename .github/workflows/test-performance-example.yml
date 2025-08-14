@@ -1,0 +1,147 @@
+# Example GitHub Actions workflow demonstrating optimized test execution
+# This file shows how to integrate the test performance optimizations in CI
+
+name: Test Performance Example
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Fast feedback for development
+  quick-tests:
+    name: Quick Tests (Unit + Fast)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: Run quick tests
+      run: make test-quick
+      
+  # Comprehensive testing for PRs
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: quick-tests
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: Run CI tests
+      run: make test-ci
+      env:
+        GOMAXPROCS: 4
+        GO_TEST_TIMEOUT: 10m
+        
+  # Full E2E testing for main branch
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.ref == 'refs/heads/main'
+    needs: integration-tests
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+          
+    - name: Run E2E tests
+      run: make test-e2e
+      env:
+        GOMAXPROCS: 4
+        GO_TEST_TIMEOUT: 15m
+        
+  # Performance monitoring
+  performance-check:
+    name: Performance Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Run benchmarks
+      run: make benchmark
+      
+    - name: Check test performance targets
+      run: |
+        echo "Checking test performance targets..."
+        
+        # Run tests with timing
+        echo "Unit tests should complete in < 2s"
+        timeout 5s make test-unit
+        
+        echo "Fast tests should complete in < 5s"
+        timeout 10s make test-fast
+        
+        echo "Integration tests should complete in < 30s"
+        timeout 60s make test-integration
+        
+        echo "All performance targets met!"
+
+  # Coverage reporting
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+        
+    - name: Run tests with coverage
+      run: make test-coverage
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella

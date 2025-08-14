@@ -8,6 +8,14 @@ import (
 	"time"
 )
 
+const (
+	defaultUsername = "admin"
+	defaultPassword = "admin"
+	rootUsername    = "root"
+	rootPassword    = "root"
+	passwordValue   = "password"
+)
+
 func vulnerableEndpoint(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 
@@ -146,9 +154,9 @@ func defaultCredentialsEndpoint(w http.ResponseWriter, r *http.Request) {
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 
-		if (username == "admin" && password == "admin") ||
-			(username == "root" && password == "root") ||
-			(username == "admin" && password == "password") {
+		if (username == defaultUsername && password == defaultPassword) ||
+			(username == rootUsername && password == rootPassword) ||
+			(username == defaultUsername && password == passwordValue) {
 			w.Header().Set("Content-Type", "text/html")
 			fmt.Fprint(w, `<html>
 <head><title>Admin Panel</title></head>
@@ -292,26 +300,34 @@ func backupFilesEndpoint(w http.ResponseWriter, r *http.Request) {
 	case "/config.bak":
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("database_password=secret123\napi_key=abc123def456\nserver_config=production"))
+		if _, err := w.Write([]byte("database_password=secret123\napi_key=abc123def456\nserver_config=production")); err != nil {
+			log.Printf("Error writing response: %v", err)
+		}
 	case "/app.config.old":
 		w.Header().Set("Content-Type", "application/xml")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`<?xml version="1.0"?>
+		xmlContent := `<?xml version="1.0"?>
 <configuration>
   <connectionStrings>
     <add name="DefaultConnection" connectionString="Server=localhost;Database=prod;User=admin;Password=admin123;" />
   </connectionStrings>
-</configuration>`))
+</configuration>`
+		if _, err := w.Write([]byte(xmlContent)); err != nil {
+			log.Printf("Error writing response: %v", err)
+		}
 	case "/database.sql.backup":
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`-- Database backup
+		sqlContent := `-- Database backup
 CREATE TABLE users (
     id INT PRIMARY KEY,
     username VARCHAR(50),
     password VARCHAR(255)
 );
-INSERT INTO users VALUES (1, 'admin', 'admin123');`))
+INSERT INTO users VALUES (1, 'admin', 'admin123');`
+		if _, err := w.Write([]byte(sqlContent)); err != nil {
+			log.Printf("Error writing response: %v", err)
+		}
 	default:
 		http.NotFound(w, r)
 	}

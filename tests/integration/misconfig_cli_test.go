@@ -1,18 +1,39 @@
+//go:build integration
+// +build integration
+
 package integration
 
 import (
-	"os"
+	"net/http/httptest"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
+
+	"vn/tests/shared/fixtures"
 )
 
+var (
+	sharedMockServer *httptest.Server
+	mockServerOnce   sync.Once
+)
+
+func getSharedMockServer() *httptest.Server {
+	mockServerOnce.Do(func() {
+		provider := fixtures.NewMockProvider()
+		sharedMockServer = provider.CreateHTTPBinMock()
+	})
+	return sharedMockServer
+}
+
 func TestMisconfigCLIFlags(t *testing.T) {
-	buildCmd := exec.Command("go", "build", "-o", "vn-misconfig-test", "../../.")
-	if err := buildCmd.Run(); err != nil {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
-	defer os.Remove("vn-misconfig-test")
+
+	mockServer := getSharedMockServer()
 
 	testCases := []struct {
 		name           string
@@ -22,7 +43,7 @@ func TestMisconfigCLIFlags(t *testing.T) {
 	}{
 		{
 			name: "Basic misconfig scan",
-			args: []string{"misconfig", "https://httpbin.org", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--timeout", "5"},
 			expectedOutput: []string{
 				"Starting Security Misconfiguration scan",
 				"Method: GET",
@@ -31,7 +52,7 @@ func TestMisconfigCLIFlags(t *testing.T) {
 		},
 		{
 			name: "Misconfig with specific tests",
-			args: []string{"misconfig", "https://httpbin.org", "--tests", "files", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--tests", "files", "--timeout", "5"},
 			expectedOutput: []string{
 				"Test Categories: [files]",
 				"Starting Security Misconfiguration scan",
@@ -39,21 +60,21 @@ func TestMisconfigCLIFlags(t *testing.T) {
 		},
 		{
 			name: "Misconfig with multiple test categories",
-			args: []string{"misconfig", "https://httpbin.org", "--tests", "files,headers", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--tests", "files,headers", "--timeout", "5"},
 			expectedOutput: []string{
 				"Test Categories: [files headers]",
 			},
 		},
 		{
 			name: "Misconfig with custom headers",
-			args: []string{"misconfig", "https://httpbin.org", "--headers", "User-Agent: VN-Test", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--headers", "User-Agent: VN-Test", "--timeout", "5"},
 			expectedOutput: []string{
 				"Starting Security Misconfiguration scan",
 			},
 		},
 		{
 			name: "Misconfig with threading options",
-			args: []string{"misconfig", "https://httpbin.org", "--threads", "2", "--timeout", "3"},
+			args: []string{"misconfig", mockServer.URL, "--threads", "2", "--timeout", "3"},
 			expectedOutput: []string{
 				"Threads: 2",
 				"Timeout: 3s",
@@ -61,7 +82,7 @@ func TestMisconfigCLIFlags(t *testing.T) {
 		},
 		{
 			name: "Misconfig with POST method",
-			args: []string{"misconfig", "https://httpbin.org", "--method", "POST", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--method", "POST", "--timeout", "5"},
 			expectedOutput: []string{
 				"Method: POST",
 			},
@@ -80,7 +101,7 @@ func TestMisconfigCLIFlags(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd := exec.Command("./vn-misconfig-test", tc.args...)
+			cmd := exec.Command(binaryPath, tc.args...)
 			output, err := cmd.CombinedOutput()
 			outputStr := string(output)
 
@@ -88,7 +109,7 @@ func TestMisconfigCLIFlags(t *testing.T) {
 				t.Errorf("Expected command to fail, but it succeeded. Output: %s", outputStr)
 			}
 
-			if !tc.expectError && err != nil && !strings.Contains(outputStr, "no such host") {
+			if !tc.expectError && err != nil {
 				t.Errorf("Expected command to succeed, but it failed: %v. Output: %s", err, outputStr)
 			}
 
@@ -106,17 +127,20 @@ func TestMisconfigCLIFlags(t *testing.T) {
 }
 
 func TestMisconfigCLIResultDisplay(t *testing.T) {
-	buildCmd := exec.Command("go", "build", "-o", "vn-misconfig-display-test", "../../.")
-	if err := buildCmd.Run(); err != nil {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
-	defer os.Remove("vn-misconfig-display-test")
 
-	cmd := exec.Command("./vn-misconfig-display-test", "misconfig", "https://httpbin.org", "--tests", "files", "--timeout", "10")
+	mockServer := getSharedMockServer()
+
+	cmd := exec.Command(binaryPath, "misconfig", mockServer.URL,
+		"--tests", "files", "--timeout", "10")
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
-	if err != nil && !strings.Contains(outputStr, "no such host") {
+	if err != nil {
 		t.Errorf("Command failed: %v. Output: %s", err, outputStr)
 	}
 
@@ -150,13 +174,13 @@ func TestMisconfigCLIResultDisplay(t *testing.T) {
 }
 
 func TestMisconfigCLIHelp(t *testing.T) {
-	buildCmd := exec.Command("go", "build", "-o", "vn-misconfig-help-test", "../../.")
-	if err := buildCmd.Run(); err != nil {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
-	defer os.Remove("vn-misconfig-help-test")
 
-	cmd := exec.Command("./vn-misconfig-help-test", "misconfig", "--help")
+	cmd := exec.Command(binaryPath, "misconfig", "--help")
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
@@ -185,11 +209,13 @@ func TestMisconfigCLIHelp(t *testing.T) {
 }
 
 func TestMisconfigCLIErrorHandling(t *testing.T) {
-	buildCmd := exec.Command("go", "build", "-o", "vn-misconfig-error-test", "../../.")
-	if err := buildCmd.Run(); err != nil {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
-	defer os.Remove("vn-misconfig-error-test")
+
+	mockServer := getSharedMockServer()
 
 	testCases := []struct {
 		name string
@@ -197,11 +223,11 @@ func TestMisconfigCLIErrorHandling(t *testing.T) {
 	}{
 		{
 			name: "Invalid timeout",
-			args: []string{"misconfig", "https://httpbin.org", "--timeout", "invalid"},
+			args: []string{"misconfig", mockServer.URL, "--timeout", "invalid"},
 		},
 		{
 			name: "Invalid threads",
-			args: []string{"misconfig", "https://httpbin.org", "--threads", "invalid"},
+			args: []string{"misconfig", mockServer.URL, "--threads", "invalid"},
 		},
 		{
 			name: "Unreachable host",
@@ -211,7 +237,7 @@ func TestMisconfigCLIErrorHandling(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd := exec.Command("./vn-misconfig-error-test", tc.args...)
+			cmd := exec.Command(binaryPath, tc.args...)
 			output, err := cmd.CombinedOutput()
 			outputStr := string(output)
 
@@ -229,11 +255,13 @@ func TestMisconfigCLIErrorHandling(t *testing.T) {
 }
 
 func TestMisconfigCLIAdvancedFeatures(t *testing.T) {
-	buildCmd := exec.Command("go", "build", "-o", "vn-misconfig-advanced-test", "../../.")
-	if err := buildCmd.Run(); err != nil {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
-	defer os.Remove("vn-misconfig-advanced-test")
+
+	mockServer := getSharedMockServer()
 
 	testCases := []struct {
 		name           string
@@ -242,7 +270,7 @@ func TestMisconfigCLIAdvancedFeatures(t *testing.T) {
 	}{
 		{
 			name: "High thread count",
-			args: []string{"misconfig", "https://httpbin.org", "--threads", "20", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--threads", "20", "--timeout", "5"},
 			expectedOutput: []string{
 				"Threads: 20",
 				"Starting Security Misconfiguration scan",
@@ -250,28 +278,29 @@ func TestMisconfigCLIAdvancedFeatures(t *testing.T) {
 		},
 		{
 			name: "Very short timeout",
-			args: []string{"misconfig", "https://httpbin.org", "--timeout", "1"},
+			args: []string{"misconfig", mockServer.URL, "--timeout", "1"},
 			expectedOutput: []string{
 				"Timeout: 1s",
 			},
 		},
 		{
 			name: "Multiple custom headers",
-			args: []string{"misconfig", "https://httpbin.org", "--headers", "User-Agent: VN-Test", "--headers", "Authorization: Bearer token", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--headers", "User-Agent: VN-Test",
+				"--headers", "Authorization: Bearer token", "--timeout", "5"},
 			expectedOutput: []string{
 				"Starting Security Misconfiguration scan",
 			},
 		},
 		{
 			name: "All test categories explicitly",
-			args: []string{"misconfig", "https://httpbin.org", "--tests", "files,headers,defaults,server", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--tests", "files,headers,defaults,server", "--timeout", "5"},
 			expectedOutput: []string{
 				"Test Categories: [files headers defaults server]",
 			},
 		},
 		{
 			name: "Single test category",
-			args: []string{"misconfig", "https://httpbin.org", "--tests", "headers", "--timeout", "5"},
+			args: []string{"misconfig", mockServer.URL, "--tests", "headers", "--timeout", "5"},
 			expectedOutput: []string{
 				"Test Categories: [headers]",
 			},
@@ -280,11 +309,11 @@ func TestMisconfigCLIAdvancedFeatures(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd := exec.Command("./vn-misconfig-advanced-test", tc.args...)
+			cmd := exec.Command(binaryPath, tc.args...)
 			output, err := cmd.CombinedOutput()
 			outputStr := string(output)
 
-			if err != nil && !strings.Contains(outputStr, "no such host") {
+			if err != nil {
 				t.Errorf("Command failed: %v. Output: %s", err, outputStr)
 			}
 
@@ -302,17 +331,20 @@ func TestMisconfigCLIAdvancedFeatures(t *testing.T) {
 }
 
 func TestMisconfigCLIOutputFormatting(t *testing.T) {
-	buildCmd := exec.Command("go", "build", "-o", "vn-misconfig-format-test", "../../.")
-	if err := buildCmd.Run(); err != nil {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
-	defer os.Remove("vn-misconfig-format-test")
 
-	cmd := exec.Command("./vn-misconfig-format-test", "misconfig", "https://httpbin.org", "--tests", "headers", "--timeout", "10")
+	mockServer := getSharedMockServer()
+
+	cmd := exec.Command(binaryPath, "misconfig", mockServer.URL,
+		"--tests", "headers", "--timeout", "10")
 	output, err := cmd.CombinedOutput()
 	outputStr := string(output)
 
-	if err != nil && !strings.Contains(outputStr, "no such host") {
+	if err != nil {
 		t.Errorf("Command failed: %v. Output: %s", err, outputStr)
 	}
 
@@ -348,11 +380,13 @@ func TestMisconfigCLIOutputFormatting(t *testing.T) {
 }
 
 func TestMisconfigCLIEdgeCases(t *testing.T) {
-	buildCmd := exec.Command("go", "build", "-o", "vn-misconfig-edge-test", "../../.")
-	if err := buildCmd.Run(); err != nil {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
-	defer os.Remove("vn-misconfig-edge-test")
+
+	mockServer := getSharedMockServer()
 
 	testCases := []struct {
 		name        string
@@ -361,33 +395,33 @@ func TestMisconfigCLIEdgeCases(t *testing.T) {
 	}{
 		{
 			name: "Zero timeout",
-			args: []string{"misconfig", "https://httpbin.org", "--timeout", "0"},
+			args: []string{"misconfig", mockServer.URL, "--timeout", "0"},
 		},
 		{
 			name: "Zero threads",
-			args: []string{"misconfig", "https://httpbin.org", "--threads", "0"},
+			args: []string{"misconfig", mockServer.URL, "--threads", "0"},
 		},
 		{
 			name: "Invalid test category",
-			args: []string{"misconfig", "https://httpbin.org", "--tests", "invalid"},
+			args: []string{"misconfig", mockServer.URL, "--tests", "invalid"},
 		},
 		{
 			name: "Empty headers",
-			args: []string{"misconfig", "https://httpbin.org", "--headers", ""},
+			args: []string{"misconfig", mockServer.URL, "--headers", ""},
 		},
 		{
 			name: "Malformed header",
-			args: []string{"misconfig", "https://httpbin.org", "--headers", "InvalidHeader"},
+			args: []string{"misconfig", mockServer.URL, "--headers", "InvalidHeader"},
 		},
 		{
 			name: "Very long URL",
-			args: []string{"misconfig", "https://httpbin.org/" + strings.Repeat("a", 1000)},
+			args: []string{"misconfig", mockServer.URL + "/" + strings.Repeat("a", 1000)},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			cmd := exec.Command("./vn-misconfig-edge-test", tc.args...)
+			cmd := exec.Command(binaryPath, tc.args...)
 			output, err := cmd.CombinedOutput()
 			outputStr := string(output)
 
@@ -405,5 +439,55 @@ func TestMisconfigCLIEdgeCases(t *testing.T) {
 				t.Errorf("Expected some meaningful output for edge case '%s', got: %s", tc.name, outputStr)
 			}
 		})
+	}
+}
+
+func TestMisconfigCLITimeoutHandling(t *testing.T) {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	provider := fixtures.NewMockProvider()
+	provider.SimulateNetworkDelay(3000)
+	delayedServer := provider.CreateHTTPBinMock()
+	defer delayedServer.Close()
+
+	cmd := exec.Command(binaryPath, "misconfig", delayedServer.URL, "--timeout", "1")
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	if strings.Contains(outputStr, "panic") {
+		t.Errorf("Command panicked during timeout test: %s", outputStr)
+	}
+
+	if !strings.Contains(outputStr, "Starting Security Misconfiguration scan") {
+		t.Errorf("Expected scan to start even with timeout, got: %s", outputStr)
+	}
+}
+
+func TestMisconfigCLIErrorSimulation(t *testing.T) {
+	t.Parallel()
+	binaryPath, err := getSharedBuildManager().BuildOnce("vn", "../../.")
+	if err != nil {
+		t.Fatalf("Failed to build CLI: %v", err)
+	}
+
+	provider := fixtures.NewMockProvider()
+	provider.SimulateNetworkError("internal_error")
+	errorServer := provider.CreateHTTPBinMock()
+	defer errorServer.Close()
+
+	cmd := exec.Command(binaryPath, "misconfig", errorServer.URL, "--timeout", "5")
+	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	if strings.Contains(outputStr, "panic") {
+		t.Errorf("Command panicked during error simulation: %s", outputStr)
+	}
+
+	if !strings.Contains(outputStr, "Starting Security Misconfiguration scan") {
+		t.Errorf("Expected scan to start even with server errors, got: %s", outputStr)
 	}
 }

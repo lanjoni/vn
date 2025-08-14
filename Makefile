@@ -27,21 +27,45 @@ build-all: ## Build binaries for all platforms
 	GOOS=darwin GOARCH=arm64 go build ${LDFLAGS} -o ${BINARY_NAME}-darwin-arm64 .
 	GOOS=windows GOARCH=amd64 go build ${LDFLAGS} -o ${BINARY_NAME}-windows-amd64.exe .
 
-test: test-unit test-integration ## Run all tests
+test: test-unit test-fast test-integration test-e2e ## Run all tests
 
-test-unit: ## Run unit tests
+test-unit: ## Run unit tests (no build tags)
 	@echo "Running unit tests..."
 	go test -v -race ./cmd ./internal/scanner
 
-test-integration: ## Run integration tests
+test-fast: ## Run fast tests with mocks and minimal dependencies
+	@echo "Running fast tests..."
+	go test -v -race -tags=fast ./tests/shared/...
+
+test-integration: ## Run integration tests with local servers
 	@echo "Running integration tests..."
-	go test -v ./tests/integration/...
+	go test -v -tags=integration ./tests/integration/... ./tests/shared/...
+
+test-e2e: ## Run end-to-end tests with full workflows
+	@echo "Running E2E tests..."
+	go test -v -tags=e2e ./tests/e2e/...
+
+test-all-categories: ## Run all test categories (unit, fast, integration, e2e)
+	@echo "Running all test categories..."
+	go test -v -race -tags="fast,integration,e2e" ./...
+
+test-quick: test-unit test-fast ## Run quick tests for development feedback
+	@echo "Quick tests completed!"
+
+test-ci: test-unit test-fast test-integration ## Run CI-appropriate tests (excludes slow e2e)
+	@echo "CI tests completed!"
 
 test-coverage: ## Run tests with coverage
 	@echo "Running tests with coverage..."
-	go test -v -race -coverprofile=${COVERAGE_FILE} ./...
+	go test -v -race -tags="fast,integration,e2e" -coverprofile=${COVERAGE_FILE} ./...
 	go tool cover -html=${COVERAGE_FILE} -o ${COVERAGE_HTML}
 	@echo "Coverage report generated: ${COVERAGE_HTML}"
+
+test-coverage-fast: ## Run fast tests with coverage
+	@echo "Running fast tests with coverage..."
+	go test -v -race -tags=fast -coverprofile=${COVERAGE_FILE} ./...
+	go tool cover -html=${COVERAGE_FILE} -o ${COVERAGE_HTML}
+	@echo "Fast test coverage report generated: ${COVERAGE_HTML}"
 
 test-short: ## Run short tests only
 	@echo "Running short tests..."
@@ -49,7 +73,11 @@ test-short: ## Run short tests only
 
 benchmark: ## Run benchmarks
 	@echo "Running benchmarks..."
-	go test -bench=. -benchmem ./tests/integration/...
+	go test -bench=. -benchmem -tags=integration ./tests/integration/...
+
+test-performance: ## Monitor test performance against targets
+	@echo "Monitoring test performance..."
+	./scripts/monitor-test-performance.sh
 
 lint: ## Run linting
 	@echo "Running linter..."
@@ -101,10 +129,10 @@ update: ## Update dependencies
 	go get -u ./...
 	go mod tidy
 
-pre-commit: fmt vet lint test-unit ## Run pre-commit checks
+pre-commit: fmt vet lint test-quick ## Run pre-commit checks
 	@echo "Pre-commit checks passed!"
 
-ci: deps vet lint test benchmark ## Run CI pipeline locally
+ci: deps vet lint test-ci benchmark ## Run CI pipeline locally
 	@echo "CI pipeline completed!"
 
 install: build ## Install the binary to $GOPATH/bin

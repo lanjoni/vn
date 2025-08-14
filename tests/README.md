@@ -1,144 +1,172 @@
-# Testing Structure
+# Test Categories and Execution
 
-This document explains how tests are organized in the VN project following Go best practices.
+This document describes the test categorization system and how to run different types of tests.
 
-## 🏗️ Go Testing Conventions
+## Test Categories
 
-### **1. Unit Tests (Go Standard)**
-- **Location**: Same directory as source code with `_test.go` suffix
-- **Package**: Uses `package foo` (internal) or `package foo_test` (external)
-- **Purpose**: Test individual functions/methods in isolation
+### Fast Tests (`fast` build tag)
+- **Purpose**: Quick unit tests and tests with minimal dependencies
+- **Duration**: < 5 seconds total
+- **Dependencies**: In-memory mocks, no external services
+- **Examples**: 
+  - Unit tests for shared utilities
+  - Mock provider tests
+  - Build manager tests
+  - Resource manager tests
+
+### Integration Tests (`integration` build tag)
+- **Purpose**: Medium-speed tests using local test servers
+- **Duration**: < 30 seconds total
+- **Dependencies**: Local HTTP test servers, shared infrastructure
 - **Examples**:
-  - `internal/scanner/sqli_test.go` - Tests SQL injection scanner
-  - `internal/scanner/xss_test.go` - Tests XSS scanner
-  - `cmd/root_test.go` - Tests CLI root command
+  - CLI integration tests
+  - Workflow tests with test servers
+  - Shared infrastructure integration tests
 
-### **2. Integration Tests**
-- **Location**: `tests/integration/` directory
-- **Package**: Uses `package integration` 
-- **Purpose**: Test full system behavior, CLI integration, server interaction
+### E2E Tests (`e2e` build tag)
+- **Purpose**: Full end-to-end testing with comprehensive scenarios
+- **Duration**: < 60 seconds total
+- **Dependencies**: Complete test environments, full feature workflows
 - **Examples**:
-  - `tests/integration/cli_test.go` - Full CLI testing
-  - `tests/integration/server_test.go` - Server behavior testing
+  - Complete misconfiguration scanning workflows
+  - Full feature integration tests
 
-### **3. Test Data**
-- **Location**: `testdata/` directory
-- **Purpose**: Store test fixtures, payloads, expected responses
-- **Auto-ignored**: Go tooling automatically ignores `testdata` directories
+### Unit Tests (no build tag)
+- **Purpose**: Fast unit tests for core functionality
+- **Duration**: < 2 seconds total
+- **Dependencies**: None (pure unit tests)
 - **Examples**:
-  - `testdata/payloads/sqli_payloads.json` - SQL injection test payloads
-  - `testdata/responses/vulnerable_responses.json` - Expected server responses
+  - Scanner logic tests
+  - Core algorithm tests
+  - Utility function tests
 
-### **4. Test Utilities**
-- **Location**: `internal/testutil/` directory
-- **Purpose**: Shared test helpers and utilities
-- **Examples**:
-  - Mock servers, assertion helpers, test setup functions
+## Running Tests
 
-## 📊 Test Categories
-
-### **Unit Tests**
+### Run All Tests
 ```bash
-# Run all unit tests
-make test-unit
-# or
-go test -v ./internal/... ./cmd/... ./test-server/...
+go test ./...
 ```
 
-### **Integration Tests**
+### Run Only Fast Tests
 ```bash
-# Run integration tests
-make test-integration
-# or
-go test -v ./tests/integration/...
+go test -tags=fast ./...
 ```
 
-### **All Tests**
+### Run Only Integration Tests
 ```bash
-# Run everything
-make test
-# or
-go test -v ./...
+go test -tags=integration ./...
 ```
 
-## 🎯 Test Organization Benefits
-
-### **✅ Pros of This Structure:**
-
-1. **Go Idiomatic**: Unit tests follow Go convention (same directory)
-2. **Clear Separation**: Integration tests separate from unit tests
-3. **Shared Utilities**: Common test helpers in `testutil`
-4. **Test Data**: Organized fixtures in `testdata`
-5. **CI/CD Friendly**: Different test types can run independently
-6. **Performance**: Unit tests run fast, integration tests run when needed
-
-### **🚀 Common Go Testing Patterns:**
-
-1. **Table-Driven Tests**: Most Go tests use this pattern
-2. **Test Helpers**: Functions with `t.Helper()` for better error reporting
-3. **Setup/Teardown**: Using defer for cleanup
-4. **Parallel Tests**: Using `t.Parallel()` for concurrent test execution
-5. **Build Tags**: Using `//go:build integration` for conditional compilation
-
-## 🛠️ Development Workflow
-
-### **Quick Development Check:**
+### Run Only E2E Tests
 ```bash
-make check  # fmt + vet + lint + unit tests
+go test -tags=e2e ./...
 ```
 
-### **Pre-Commit:**
+### Run Fast + Integration Tests
 ```bash
-make pre-commit  # Full check before committing
+go test -tags="fast,integration" ./...
 ```
 
-### **CI Pipeline:**
+### Run All Test Categories
 ```bash
-make ci  # Complete CI pipeline locally
+go test -tags="fast,integration,e2e" ./...
 ```
 
-## 📁 Directory Structure
-
-```
-vn/
-├── cmd/                     # CLI commands
-│   ├── root.go
-│   ├── root_test.go        # ✅ Unit tests (same dir)
-│   ├── sqli.go
-│   └── xss.go
-├── internal/
-│   ├── scanner/            # Core scanners
-│   │   ├── sqli.go
-│   │   ├── sqli_test.go    # ✅ Unit tests (same dir)
-│   │   ├── xss.go
-│   │   └── xss_test.go     # ✅ Unit tests (same dir)
-│   └── testutil/           # 🛠️ Test utilities
-│       └── helpers.go      # Shared test helpers
-├── test-server/            # Vulnerable test server
-│   ├── main.go
-│   └── main_test.go        # ✅ Unit tests (same dir)
-├── tests/                  # 🧪 Integration tests
-│   ├── integration/
-│   │   ├── cli_test.go     # CLI integration tests
-│   │   └── server_test.go  # Server integration tests
-│   └── README.md           # This file
-├── testdata/               # 📊 Test fixtures
-│   ├── payloads/
-│   │   └── sqli_payloads.json
-│   └── responses/
-│       └── vulnerable_responses.json
-└── ...
+### Run Tests in Short Mode (skips slow tests)
+```bash
+go test -short ./...
 ```
 
-## 🎓 Go Testing Best Practices
+## Test Performance Targets
 
-1. **Keep unit tests close to source** - Go convention
-2. **Use table-driven tests** - Clean and scalable
-3. **Test behavior, not implementation** - Focus on outcomes
-4. **Use meaningful test names** - `TestFunctionName_Condition_ExpectedResult`
-5. **Parallel where possible** - Use `t.Parallel()` for independent tests
-6. **Clean up resources** - Use `defer` for cleanup
-7. **Use test utilities** - Share common setup/teardown logic
-8. **Separate unit from integration** - Different purposes, different speeds
+| Category | Target Duration | Actual Duration |
+|----------|----------------|-----------------|
+| Unit Tests | < 2s | TBD |
+| Fast Tests | < 5s | TBD |
+| Integration Tests | < 30s | TBD |
+| E2E Tests | < 60s | TBD |
+| All Tests | < 2m | TBD |
 
-This structure makes development happier by providing clear organization while following Go idioms! 🎉 
+## CI/CD Integration
+
+### Development Workflow
+1. **Pre-commit**: Run fast tests only
+2. **Pull Request**: Run fast + integration tests
+3. **Main Branch**: Run all test categories
+
+### Example CI Configuration
+```yaml
+# Fast feedback loop
+fast-tests:
+  run: go test -tags=fast ./...
+
+# Comprehensive testing
+full-tests:
+  run: go test -tags="fast,integration,e2e" ./...
+```
+
+## Test Organization
+
+```
+tests/
+├── integration/     # Integration tests (integration tag)
+├── e2e/            # End-to-end tests (e2e tag)
+└── shared/         # Shared test utilities
+    ├── builders/   # Build management (fast tag)
+    ├── fixtures/   # Mock providers (fast tag)
+    └── testserver/ # Server pool (fast tag)
+
+internal/
+└── scanner/        # Unit tests (no tag)
+```
+
+## Test Scripts
+
+Convenient execution scripts are available in the `scripts/` directory:
+
+### Execution Scripts
+- `scripts/test-fast.sh` - Run fast tests for quick feedback
+- `scripts/test-integration.sh` - Run integration tests with local servers
+- `scripts/test-e2e.sh` - Run complete end-to-end tests
+- `scripts/test-ci.sh` - CI-optimized test execution
+
+### Performance Monitoring
+- `scripts/monitor-test-performance.sh` - Monitor test performance against targets
+- `make test-performance` - Run performance monitoring via Makefile
+
+### Usage Examples
+```bash
+# Quick development feedback
+./scripts/test-fast.sh
+
+# Monitor performance
+./scripts/monitor-test-performance.sh
+
+# CI testing
+./scripts/test-ci.sh
+```
+
+## Performance Monitoring
+
+The project includes automated performance monitoring to ensure tests remain fast:
+
+```bash
+# Check all test categories against performance targets
+make test-performance
+
+# Individual performance checks
+time make test-unit        # Should complete in < 2s
+time make test-fast        # Should complete in < 5s
+time make test-integration # Should complete in < 30s
+time make test-e2e        # Should complete in < 60s
+```
+
+## Best Practices
+
+1. **Tag Selection**: Choose the most restrictive tag that still allows proper testing
+2. **Test Isolation**: Ensure tests can run independently within their category
+3. **Resource Management**: Use shared infrastructure for integration/e2e tests
+4. **Performance Monitoring**: Track test execution times to prevent regression
+5. **Parallel Execution**: Use `t.Parallel()` for independent tests within categories
+6. **Script Usage**: Use provided scripts for consistent test execution
+7. **CI Integration**: Follow the example CI configuration for optimal pipeline performance

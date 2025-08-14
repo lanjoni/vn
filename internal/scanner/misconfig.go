@@ -612,7 +612,6 @@ func (m *MisconfigScanner) TestBackupFiles() []MisconfigResult {
 	}
 
 	basePaths := []string{
-		parsedURL.Path,
 		"/index.php",
 		"/index.html",
 		"/config.php",
@@ -620,6 +619,11 @@ func (m *MisconfigScanner) TestBackupFiles() []MisconfigResult {
 		"/login.php",
 		"/database.sql",
 		"/backup.sql",
+	}
+	
+	// Add the parsed URL path if it's not empty and starts with /
+	if parsedURL.Path != "" && strings.HasPrefix(parsedURL.Path, "/") {
+		basePaths = append(basePaths, parsedURL.Path)
 	}
 
 	for _, basePath := range basePaths {
@@ -630,6 +634,10 @@ func (m *MisconfigScanner) TestBackupFiles() []MisconfigResult {
 				semaphore <- struct{}{}
 				defer func() { <-semaphore }()
 
+				// Ensure the path starts with / to avoid malformed URLs
+				if !strings.HasPrefix(path, "/") {
+					path = "/" + path
+				}
 				backupPath := path + extension
 				if result := m.testBackupFile(backupPath); result != nil {
 					resultsChan <- *result

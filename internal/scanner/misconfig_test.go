@@ -1330,7 +1330,8 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 		{
 			name: "PHP fatal error",
 			errorResponses: map[string]string{
-				"/database/config": `<html><body><h1>Fatal Error</h1><p>Fatal error: Call to undefined function mysql_connect() in /var/www/html/config.php on line 15</p></body></html>`,
+				"/database/config": `<html><body><h1>Fatal Error</h1><p>Fatal error: ` +
+					`Call to undefined function mysql_connect() in /var/www/html/config.php on line 15</p></body></html>`,
 			},
 			expectedCount:   1,
 			expectedFinding: "Information leakage in error messages",
@@ -1338,7 +1339,8 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 		{
 			name: "version disclosure in error",
 			errorResponses: map[string]string{
-				"/api/v1/nonexistent": `<html><body><h1>404 Not Found</h1><p>Apache/2.4.41 Server at example.com Port 80</p></body></html>`,
+				"/api/v1/nonexistent": `<html><body><h1>404 Not Found</h1><p>Apache/2.4.41 ` +
+					`Server at example.com Port 80</p></body></html>`,
 			},
 			expectedCount:   1,
 			expectedFinding: "Version information disclosed in error page",
@@ -1354,8 +1356,9 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 		{
 			name: "clean error pages",
 			errorResponses: map[string]string{
-				"/nonexistent-page-12345": `<html><body><h1>404 Not Found</h1><p>The requested page was not found.</p></body></html>`,
-				"/admin/secret":           `<html><body><h1>403 Forbidden</h1><p>Access denied.</p></body></html>`,
+				"/nonexistent-page-12345": `<html><body><h1>404 Not Found</h1><p>The requested ` +
+					`page was not found.</p></body></html>`,
+				"/admin/secret": `<html><body><h1>403 Forbidden</h1><p>Access denied.</p></body></html>`,
 			},
 			expectedCount: 0,
 		},
