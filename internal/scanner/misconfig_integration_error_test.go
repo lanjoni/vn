@@ -14,14 +14,14 @@ func TestMisconfigScanner_IntegratedErrorHandling(t *testing.T) {
 		case "/.env":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("DB_PASSWORD=secret123"))
-		case "/timeout":
+		case "/config.php":
 			time.Sleep(2 * time.Second)
 			w.WriteHeader(http.StatusOK)
-		case "/large":
+		case "/web.config":
 			data := strings.Repeat("A", 1024*200)
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(data))
-		case "/invalid-utf8":
+		case "/backup.sql":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte{0xff, 0xfe, 0xfd})
 			w.Write([]byte("valid text"))

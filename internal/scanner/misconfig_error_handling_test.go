@@ -258,7 +258,7 @@ func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 
 func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "fail") {
+		if r.URL.Path == "/config.php" || r.URL.Path == "/backup.sql" {
 			time.Sleep(2 * time.Second) // Cause timeout
 			return
 		}
