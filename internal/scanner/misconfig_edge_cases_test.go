@@ -30,7 +30,9 @@ func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
 	sensitiveResults := misconfigScanner.TestSensitiveFiles()
 	headerResults := misconfigScanner.TestSecurityHeaders()
 
-	results := append(sensitiveResults, headerResults...)
+	results := make([]MisconfigResult, 0, len(sensitiveResults)+len(headerResults))
+	results = append(results, sensitiveResults...)
+	results = append(results, headerResults...)
 
 	// Should handle empty responses gracefully
 	errors := misconfigScanner.GetErrors()
@@ -55,7 +57,9 @@ func TestMisconfigScanner_EdgeCases_MalformedHTML(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		// Malformed HTML
-		w.Write([]byte(`<html><head><title>Test</head><body><h1>Unclosed tags<p>Missing closing tags<form><input name="username"><input type="password"`))
+		malformedHTML := `<html><head><title>Test</head><body><h1>Unclosed tags<p>Missing closing tags` +
+			`<form><input name="username"><input type="password"`
+		w.Write([]byte(malformedHTML))
 	}))
 	defer server.Close()
 
@@ -151,13 +155,14 @@ func TestMisconfigScanner_EdgeCases_RedirectLoops(t *testing.T) {
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Create redirect loop
-		if r.URL.Path == "/redirect1" {
+		switch r.URL.Path {
+		case "/redirect1":
 			w.Header().Set("Location", server.URL+"/redirect2")
 			w.WriteHeader(http.StatusFound)
-		} else if r.URL.Path == "/redirect2" {
+		case "/redirect2":
 			w.Header().Set("Location", server.URL+"/redirect1")
 			w.WriteHeader(http.StatusFound)
-		} else {
+		default:
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 		}

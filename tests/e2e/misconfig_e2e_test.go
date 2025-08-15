@@ -30,7 +30,7 @@ func getE2EServerPool() testserver.ServerPool {
 
 func createE2ETestHandler() http.Handler {
 	mux := http.NewServeMux()
-	
+
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"status": "ok", "message": "Test server is running"}`)
@@ -40,32 +40,32 @@ func createE2ETestHandler() http.Handler {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("DB_PASSWORD=secret123\nAPI_KEY=abc123"))
 	})
-	
+
 	mux.HandleFunc("/config.php", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("<?php $db_pass = 'secret'; ?>"))
 	})
-	
+
 	mux.HandleFunc("/backup.sql", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("CREATE TABLE users (id INT, password VARCHAR(255));"))
 	})
-	
+
 	mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("User-agent: *\nDisallow: /admin"))
 	})
-	
+
 	mux.HandleFunc("/config.php.bak", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("database_password=secret123"))
 	})
-	
+
 	mux.HandleFunc("/index.html.old", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`<?xml version="1.0"?><configuration><connectionStrings><add name="DefaultConnection" connectionString="Server=localhost;Database=prod;User=admin;Password=admin123;" /></connectionStrings></configuration>`))
 	})
-	
+
 	mux.HandleFunc("/database.sql.backup", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("CREATE TABLE users (id INT PRIMARY KEY, username VARCHAR(50), password VARCHAR(255)); INSERT INTO users VALUES (1, 'admin', 'admin123');"))
@@ -75,7 +75,7 @@ func createE2ETestHandler() http.Handler {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("database_password=secret123"))
 	})
-	
+
 	mux.HandleFunc("/app.config.old", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`<?xml version="1.0"?><configuration><connectionStrings><add name="DefaultConnection" connectionString="Server=localhost;Database=prod;User=admin;Password=admin123;" /></connectionStrings></configuration>`))
@@ -98,15 +98,15 @@ func createE2ETestHandler() http.Handler {
 			"test":          "test",
 			"user":          "user",
 		}
-		
+
 		if validPass, exists := validCreds[username]; exists && validPass == password {
 			return true
 		}
-		
+
 		if username == "admin" && (password == "password" || password == "") {
 			return true
 		}
-		
+
 		return false
 	}
 

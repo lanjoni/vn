@@ -93,20 +93,23 @@ func TestMisconfigScanner_TestDirectoryListing(t *testing.T) {
 		expectedResult bool
 	}{
 		{
-			name:           "detects Apache directory listing",
-			responseBody:   `<html><head><title>Index of /uploads</title></head><body><h1>Index of /uploads</h1><pre><a href="../">Parent Directory</a></pre></body></html>`,
+			name: "detects Apache directory listing",
+			responseBody: `<html><head><title>Index of /uploads</title></head><body>` +
+				`<h1>Index of /uploads</h1><pre><a href="../">Parent Directory</a></pre></body></html>`,
 			statusCode:     http.StatusOK,
 			expectedResult: true,
 		},
 		{
-			name:           "detects Nginx directory listing",
-			responseBody:   `<html><head><title>Index of /files/</title></head><body><h1>Index of /files/</h1><hr><pre><a href="../">../</a></pre></body></html>`,
+			name: "detects Nginx directory listing",
+			responseBody: `<html><head><title>Index of /files/</title></head><body>` +
+				`<h1>Index of /files/</h1><hr><pre><a href="../">../</a></pre></body></html>`,
 			statusCode:     http.StatusOK,
 			expectedResult: true,
 		},
 		{
-			name:           "detects IIS directory listing",
-			responseBody:   `<html><head><title>Directory Listing For /</title></head><body><h1>Directory Listing For /</h1></body></html>`,
+			name: "detects IIS directory listing",
+			responseBody: `<html><head><title>Directory Listing For /</title></head><body>` +
+				`<h1>Directory Listing For /</h1></body></html>`,
 			statusCode:     http.StatusOK,
 			expectedResult: true,
 		},
@@ -641,8 +644,9 @@ func TestMisconfigScanner_DetectLoginForm(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "login form with action",
-			body:     `<form action="/login" method="post"><input type="text" name="username"><input type="password" name="password"></form>`,
+			name: "login form with action",
+			body: `<form action="/login" method="post">` +
+				`<input type="text" name="username"><input type="password" name="password"></form>`,
 			expected: true,
 		},
 		{
@@ -752,7 +756,8 @@ func TestMisconfigScanner_TestDefaultCredentials(t *testing.T) {
 			loginPaths: []string{"/admin"},
 			responses: map[string]map[string]string{
 				"/admin": {
-					"GET":  `<form action="/admin" method="post"><input name="username"><input type="password" name="password"></form>`,
+					"GET": `<form action="/admin" method="post">` +
+						`<input name="username"><input type="password" name="password"></form>`,
 					"POST": `Redirecting...`,
 				},
 				"/": {
@@ -860,7 +865,8 @@ func TestMisconfigScanner_TestDefaultPages(t *testing.T) {
 		{
 			name: "default installation page detected",
 			responses: map[string]string{
-				"/": `<html><head><title>Welcome to Apache Installation</title></head><body><h1>Congratulations! You have successfully installed Apache</h1></body></html>`,
+				"/": `<html><head><title>Welcome to Apache Installation</title></head><body>` +
+					`<h1>Congratulations! You have successfully installed Apache</h1></body></html>`,
 			},
 			expectedCount:   1,
 			expectedFinding: "Default installation page detected",
@@ -1040,8 +1046,9 @@ func TestMisconfigScanner_DetectDefaultInstallation(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "Apache test page",
-			body:     `<html><head><title>Apache2 Ubuntu Default Page</title></head><body><h1>Apache2 Test Page</h1></body></html>`,
+			name: "Apache test page",
+			body: `<html><head><title>Apache2 Ubuntu Default Page</title></head><body>` +
+				`<h1>Apache2 Test Page</h1></body></html>`,
 			expected: true,
 		},
 		{
@@ -1322,7 +1329,8 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 		{
 			name: "database error disclosure",
 			errorResponses: map[string]string{
-				"/admin/secret": `<html><body><h1>Database Error</h1><p>MySQL Error: Table 'users' doesn't exist in query SELECT * FROM users WHERE id=1</p></body></html>`,
+				"/admin/secret": `<html><body><h1>Database Error</h1>` +
+					`<p>MySQL Error: Table 'users' doesn't exist in query SELECT * FROM users WHERE id=1</p></body></html>`,
 			},
 			expectedCount:   1,
 			expectedFinding: "Information leakage in error messages",

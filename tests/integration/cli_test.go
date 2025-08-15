@@ -37,7 +37,7 @@ func TestCLIIntegration(t *testing.T) {
 		t.Fatalf("Failed to get test server: %v", err)
 	}
 	defer serverPool.ReleaseServer(server)
-	
+
 	shared.WaitForServerReady(t, server)
 
 	timeouts := shared.GetOptimizedTimeouts()

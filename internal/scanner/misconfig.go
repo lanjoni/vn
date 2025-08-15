@@ -180,6 +180,9 @@ func (m *MisconfigScanner) AddError(err error) {
 func (m *MisconfigScanner) GetErrors() []error {
 	m.errorMutex.Lock()
 	defer m.errorMutex.Unlock()
+	if len(m.errors) == 0 {
+		return make([]error, 0)
+	}
 	return append([]error(nil), m.errors...)
 }
 
@@ -620,7 +623,7 @@ func (m *MisconfigScanner) TestBackupFiles() []MisconfigResult {
 		"/database.sql",
 		"/backup.sql",
 	}
-	
+
 	// Add the parsed URL path if it's not empty and starts with /
 	if parsedURL.Path != "" && strings.HasPrefix(parsedURL.Path, "/") {
 		basePaths = append(basePaths, parsedURL.Path)

@@ -38,13 +38,10 @@ jobs:
       run: go mod verify
     
     - name: Run unit tests
-      run: go test -v -race -coverprofile=coverage.out ./cmd/... ./internal/...
-    
-    - name: Run short tests
-      run: go test -short -v ./...
+      run: make test-unit
     
     - name: Generate coverage report
-      run: go tool cover -html=coverage.out -o coverage.html
+      run: make test-coverage
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -87,10 +84,16 @@ jobs:
       run: go mod download
     
     - name: Run integration tests
-      run: go test -v -tags=integration ./tests/integration/...
+      run: make test-integration
     
-    - name: Run full integration test
-      run: go test -v ./tests/integration/...
+    - name: Run E2E tests
+      run: make test-e2e
+    
+    - name: Run shared tests
+      run: make test-shared
+    
+    - name: Validate test performance
+      run: make performance-check
 
   lint:
     name: Lint
@@ -202,7 +205,7 @@ jobs:
       run: go mod download
     
     - name: Run benchmarks
-      run: go test -bench=. -benchmem -run=^# ./internal/... ./tests/integration/... | tee benchmark.txt
+      run: make benchmark | tee benchmark.txt
     
     - name: Upload benchmark results
       uses: actions/upload-artifact@v4

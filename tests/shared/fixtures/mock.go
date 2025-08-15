@@ -34,11 +34,11 @@ func NewMockProvider() MockProvider {
 
 func (mp *mockProvider) CreateMockServer(responses map[string]MockResponse) *httptest.Server {
 	mux := http.NewServeMux()
-	
+
 	for path, response := range responses {
 		mux.HandleFunc(path, mp.createHandler(response))
 	}
-	
+
 	return httptest.NewServer(mux)
 }
 
@@ -48,7 +48,7 @@ func (mp *mockProvider) createHandler(response MockResponse) http.HandlerFunc {
 			mp.handleError(w, r)
 			return
 		}
-		
+
 		if response.Delay > 0 || mp.networkDelay > 0 {
 			delay := response.Delay
 			if mp.networkDelay > 0 {
@@ -56,17 +56,17 @@ func (mp *mockProvider) createHandler(response MockResponse) http.HandlerFunc {
 			}
 			time.Sleep(delay)
 		}
-		
+
 		for key, value := range response.Headers {
 			w.Header().Set(key, value)
 		}
-		
+
 		w.WriteHeader(response.StatusCode)
-		w.Write([]byte(response.Body))
+		_, _ = w.Write([]byte(response.Body)) //nolint:errcheck
 	}
 }
 
-func (mp *mockProvider) handleError(w http.ResponseWriter, r *http.Request) {
+func (mp *mockProvider) handleError(w http.ResponseWriter, _ *http.Request) {
 	switch mp.errorMode {
 	case "timeout":
 		w.WriteHeader(http.StatusRequestTimeout)
@@ -89,7 +89,7 @@ func (mp *mockProvider) SimulateNetworkError(errorType string) {
 
 func (mp *mockProvider) CreateHTTPBinMock() *httptest.Server {
 	mux := http.NewServeMux()
-	
+
 	mux.HandleFunc("/get", func(w http.ResponseWriter, r *http.Request) {
 		response := map[string]interface{}{
 			"args":    r.URL.Query(),
@@ -97,15 +97,15 @@ func (mp *mockProvider) CreateHTTPBinMock() *httptest.Server {
 			"origin":  r.RemoteAddr,
 			"url":     fmt.Sprintf("http://httpbin.org%s", r.URL.Path),
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response) //nolint:errcheck
 	})
-	
+
 	mux.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
 		body := make([]byte, r.ContentLength)
-		r.Body.Read(body)
-		
+		_, _ = r.Body.Read(body) //nolint:errcheck
+
 		response := map[string]interface{}{
 			"args":    r.URL.Query(),
 			"data":    string(body),
@@ -116,56 +116,57 @@ func (mp *mockProvider) CreateHTTPBinMock() *httptest.Server {
 			"origin":  r.RemoteAddr,
 			"url":     fmt.Sprintf("http://httpbin.org%s", r.URL.Path),
 		}
-		
+
 		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 			var jsonData interface{}
-			json.Unmarshal(body, &jsonData)
+			_ = json.Unmarshal(body, &jsonData) //nolint:errcheck
 			response["json"] = jsonData
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response) //nolint:errcheck
 	})
-	
+
 	mux.HandleFunc("/status/", func(w http.ResponseWriter, r *http.Request) {
 		statusStr := strings.TrimPrefix(r.URL.Path, "/status/")
 		var statusCode int
-		fmt.Sscanf(statusStr, "%d", &statusCode)
-		
+		_, _ = fmt.Sscanf(statusStr, "%d", &statusCode) //nolint:errcheck
+
 		if statusCode == 0 {
 			statusCode = 200
 		}
-		
+
 		w.WriteHeader(statusCode)
-		if statusCode >= 400 {
-			w.Write([]byte(fmt.Sprintf("Status: %d", statusCode)))
+		const httpErrorThreshold = 400
+		if statusCode >= httpErrorThreshold {
+			_, _ = w.Write([]byte(fmt.Sprintf("Status: %d", statusCode))) //nolint:errcheck
 		}
 	})
-	
+
 	mux.HandleFunc("/delay/", func(w http.ResponseWriter, r *http.Request) {
 		delayStr := strings.TrimPrefix(r.URL.Path, "/delay/")
 		var delaySeconds int
-		fmt.Sscanf(delayStr, "%d", &delaySeconds)
-		
+		_, _ = fmt.Sscanf(delayStr, "%d", &delaySeconds) //nolint:errcheck
+
 		if delaySeconds > 0 && delaySeconds <= 2 {
 			time.Sleep(time.Duration(delaySeconds*100) * time.Millisecond)
 		}
-		
+
 		response := map[string]interface{}{
 			"args":    r.URL.Query(),
 			"headers": r.Header,
 			"origin":  r.RemoteAddr,
 			"url":     fmt.Sprintf("http://httpbin.org%s", r.URL.Path),
 		}
-		
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
+		_ = json.NewEncoder(w).Encode(response) //nolint:errcheck
 	})
-	
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(`<html><body><h1>httpbin mock server</h1></body></html>`))
+		_, _ = w.Write([]byte(`<html><body><h1>httpbin mock server</h1></body></html>`)) //nolint:errcheck
 	})
-	
+
 	return httptest.NewServer(mux)
 }

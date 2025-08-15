@@ -31,7 +31,7 @@ func (hc *HealthChecker) WaitForServerReadyWithTimeout(url string, timeout time.
 	defer cancel()
 
 	healthURL := url + "/health"
-	
+
 	return RetryWithBackoff(func() error {
 		select {
 		case <-ctx.Done():
@@ -107,7 +107,7 @@ type HealthCheckError struct {
 
 func (e *HealthCheckError) Error() string {
 	if e.Expected > 0 {
-		return fmt.Sprintf("health check failed for %s: expected status %d, got %d", 
+		return fmt.Sprintf("health check failed for %s: expected status %d, got %d",
 			e.URL, e.Expected, e.StatusCode)
 	}
 	return fmt.Sprintf("health check failed for %s: got status %d", e.URL, e.StatusCode)

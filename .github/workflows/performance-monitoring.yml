@@ -1,0 +1,157 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+    
+    - name: Cache Go modules
+      uses: actions/cache@v4
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download baseline performance data
+      uses: actions/cache@v4
+      with:
+        path: performance-baseline.txt
+        key: performance-baseline-${{ github.repository }}-${{ github.ref_name }}
+        restore-keys: |
+          performance-baseline-${{ github.repository }}-main
+          performance-baseline-${{ github.repository }}-
+    
+    - name: Run performance measurement
+      run: |
+        chmod +x scripts/measure-test-performance.sh
+        chmod +x scripts/simple-performance-validation.sh
+        ./scripts/measure-test-performance.sh > performance-current.txt
+    
+    - name: Validate performance targets
+      run: |
+        ./scripts/simple-performance-validation.sh
+    
+    - name: Check for performance regression
+      run: |
+        if [ -f performance-baseline.txt ]; then
+          python3 scripts/check-performance-regression.py \
+            performance-baseline.txt \
+            performance-current.txt \
+            --threshold 1.25 \
+            --json-output performance-results.json \
+            --fail-on-regression
+        else
+          echo "No baseline found, skipping regression check"
+          echo '{"has_regression": false, "summary": {"total_tests": 0, "regressions": 0, "improvements": 0, "stable": 0, "new": 0}}' > performance-results.json
+        fi
+    
+    - name: Update baseline on main branch
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        cp performance-current.txt performance-baseline.txt
+    
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: performance-results
+        path: |
+          performance-current.txt
+          performance-results.json
+          performance-baseline.txt
+    
+    - name: Comment PR with performance results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          try {
+            const results = JSON.parse(fs.readFileSync('performance-results.json', 'utf8'));
+            
+            let comment = '## 📊 Performance Test Results\n\n';
+            
+            if (results.has_regression) {
+              comment += '🚨 **Performance regression detected!**\n\n';
+            } else {
+              comment += '✅ **No performance regressions detected**\n\n';
+            }
+            
+            comment += '### Summary\n';
+            comment += `- Total tests: ${results.summary.total_tests}\n`;
+            comment += `- Regressions: ${results.summary.regressions}\n`;
+            comment += `- Improvements: ${results.summary.improvements}\n`;
+            comment += `- Stable: ${results.summary.stable}\n`;
+            comment += `- New: ${results.summary.new}\n\n`;
+            
+            if (results.summary.regressions > 0) {
+              comment += '### 🚨 Regressions\n';
+              for (const [testType, data] of Object.entries(results.results)) {
+                if (data.status === 'regression') {
+                  const current = data.current < 60 ? `${data.current.toFixed(1)}s` : `${Math.floor(data.current/60)}m${(data.current%60).toFixed(1)}s`;
+                  const baseline = data.baseline < 60 ? `${data.baseline.toFixed(1)}s` : `${Math.floor(data.baseline/60)}m${(data.baseline%60).toFixed(1)}s`;
+                  const ratio = data.ratio < 10 ? `${(data.ratio * 100).toFixed(0)}%` : '>1000%';
+                  comment += `- **${testType}**: ${current} (was ${baseline}) - ${ratio} of baseline\n`;
+                }
+              }
+              comment += '\n';
+            }
+            
+            if (results.summary.improvements > 0) {
+              comment += '### 🚀 Improvements\n';
+              for (const [testType, data] of Object.entries(results.results)) {
+                if (data.status === 'improved') {
+                  const current = data.current < 60 ? `${data.current.toFixed(1)}s` : `${Math.floor(data.current/60)}m${(data.current%60).toFixed(1)}s`;
+                  const baseline = data.baseline < 60 ? `${data.baseline.toFixed(1)}s` : `${Math.floor(data.baseline/60)}m${(data.baseline%60).toFixed(1)}s`;
+                  const improvement = ((1 - data.ratio) * 100).toFixed(1);
+                  comment += `- **${testType}**: ${current} (was ${baseline}) - ${improvement}% faster\n`;
+                }
+              }
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          } catch (error) {
+            console.log('Could not post performance results:', error);
+          }
+
+  performance-benchmark:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.23'
+    
+    - name: Run benchmarks
+      run: |
+        go test -bench=. -benchmem ./tests/shared > benchmark-results.txt
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: benchmark-results.txt

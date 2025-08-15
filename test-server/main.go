@@ -129,7 +129,8 @@ func insecureHeadersEndpoint(w http.ResponseWriter, r *http.Request) {
 <head><title>Insecure Page</title></head>
 <body>
 <h1>This page has missing security headers</h1>
-<p>Missing: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Strict-Transport-Security, Content-Security-Policy</p>
+		<p>Missing: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection,</p>
+		<p>Strict-Transport-Security, Content-Security-Policy</p>
 </body>
 </html>`)
 }
@@ -284,7 +285,8 @@ func defaultInstallEndpoint(w http.ResponseWriter, r *http.Request) {
 <body>
 <h1>Apache2 Ubuntu Default Page</h1>
 <p>It works!</p>
-<p>This is the default welcome page used to test the correct operation of the Apache2 server after installation on Ubuntu systems.</p>
+		<p>This is the default welcome page used to test the correct operation of the</p>
+		<p>Apache2 server after installation on Ubuntu systems.</p>
 <p>If you can read this page, it means that the Apache HTTP server installed at this site is working properly.</p>
 <hr>
 <p>Configuration Overview</p>
@@ -300,7 +302,8 @@ func backupFilesEndpoint(w http.ResponseWriter, r *http.Request) {
 	case "/config.bak":
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte("database_password=secret123\napi_key=abc123def456\nserver_config=production")); err != nil {
+		configData := "database_password=secret123\napi_key=abc123def456\nserver_config=production"
+		if _, err := w.Write([]byte(configData)); err != nil {
 			log.Printf("Error writing response: %v", err)
 		}
 	case "/app.config.old":

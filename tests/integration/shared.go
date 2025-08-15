@@ -11,29 +11,29 @@ import (
 )
 
 var (
-	sharedBuildManager builders.BuildManager
-	buildManagerOnce   sync.Once
-	sharedServerPool   testserver.ServerPool
-	serverPoolOnce     sync.Once
+	sharedBuildManager builders.BuildManager //nolint:unused
+	buildManagerOnce   sync.Once             //nolint:unused
+	sharedServerPool   testserver.ServerPool //nolint:unused
+	serverPoolOnce     sync.Once             //nolint:unused
 )
 
-func getSharedBuildManager() builders.BuildManager {
+func getSharedBuildManager() builders.BuildManager { //nolint:unused
 	buildManagerOnce.Do(func() {
 		sharedBuildManager = builders.NewBuildManager()
 	})
 	return sharedBuildManager
 }
 
-func getSharedServerPool() testserver.ServerPool {
+func getSharedServerPool() testserver.ServerPool { //nolint:unused
 	serverPoolOnce.Do(func() {
 		sharedServerPool = testserver.NewServerPool()
 	})
 	return sharedServerPool
 }
 
-func createVulnerableTestHandler() http.Handler {
+func createVulnerableTestHandler() http.Handler { //nolint:gocyclo,unused
 	mux := http.NewServeMux()
-	
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		id := r.URL.Query().Get("id")

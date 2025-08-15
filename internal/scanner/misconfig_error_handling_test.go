@@ -210,13 +210,14 @@ func TestMisconfigScanner_InvalidUTF8Handling(t *testing.T) {
 
 func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/.env" {
+		switch {
+		case r.URL.Path == "/.env":
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("DB_PASSWORD=secret"))
-		} else if strings.Contains(r.URL.Path, "timeout") {
+			_, _ = w.Write([]byte("DB_PASSWORD=secret")) //nolint:errcheck
+		case strings.Contains(r.URL.Path, "timeout"):
 			time.Sleep(2 * time.Second) // Cause timeout for some requests
 			return
-		} else {
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -305,7 +306,7 @@ func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 func TestMisconfigScanner_PanicRecovery(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("normal response"))
+		_, _ = w.Write([]byte("normal response")) //nolint:errcheck
 	}))
 	defer server.Close()
 
@@ -320,20 +321,19 @@ func TestMisconfigScanner_PanicRecovery(t *testing.T) {
 
 	misconfigScanner := NewMisconfigScanner(config)
 
+	// This should complete without panic even if errors occur
 	results := misconfigScanner.Scan()
 
 	if results == nil {
 		t.Error("Expected results slice, got nil")
 	}
 
+	// Test that error collection works
 	errors := misconfigScanner.GetErrors()
-
-	if len(results) < 0 {
-		t.Error("Results slice should be valid")
-	}
-
-	if len(errors) < 0 {
-		t.Error("Errors slice should be valid")
+	
+	// Errors slice should exist (even if empty)
+	if errors == nil {
+		t.Fatal("Errors slice should not be nil")
 	}
 }
 

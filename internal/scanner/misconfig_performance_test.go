@@ -234,7 +234,6 @@ func TestMisconfigScanner_ConcurrentSafety(t *testing.T) {
 
 			// Add some errors to test concurrent error handling
 			misconfigScanner.AddError(fmt.Errorf("test error from goroutine %d", id))
-
 		}(i)
 	}
 

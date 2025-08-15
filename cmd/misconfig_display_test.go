@@ -39,15 +39,15 @@ func TestSortResultsByRiskAndCategory(t *testing.T) {
 
 	sorted := SortResultsByRiskAndCategory(results)
 
-	if sorted[0].RiskLevel != "High" || sorted[1].RiskLevel != "High" {
+	if sorted[0].RiskLevel != riskHigh || sorted[1].RiskLevel != riskHigh {
 		t.Errorf("High risk items should come first, got: %s, %s", sorted[0].RiskLevel, sorted[1].RiskLevel)
 	}
 
-	if sorted[2].RiskLevel != "Medium" {
+	if sorted[2].RiskLevel != riskMedium {
 		t.Errorf("Medium risk should come after High, got: %s", sorted[2].RiskLevel)
 	}
 
-	if sorted[3].RiskLevel != "Low" || sorted[4].RiskLevel != "Low" {
+	if sorted[3].RiskLevel != riskLow || sorted[4].RiskLevel != riskLow {
 		t.Errorf("Low risk items should come last, got: %s, %s", sorted[3].RiskLevel, sorted[4].RiskLevel)
 	}
 }

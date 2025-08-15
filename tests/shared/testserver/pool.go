@@ -16,11 +16,11 @@ type ServerPool interface {
 }
 
 type ServerConfig struct {
-	Handler     http.Handler
-	Port        int
-	TLS         bool
-	Timeout     time.Duration
-	ConfigName  string
+	Handler    http.Handler
+	Port       int
+	TLS        bool
+	Timeout    time.Duration
+	ConfigName string
 }
 
 type TestServer struct {
@@ -48,35 +48,35 @@ func NewServerPool() ServerPool {
 func (sp *serverPool) GetServer(config ServerConfig) (*TestServer, error) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	
+
 	configKey := sp.getConfigKey(config)
-	
+
 	if server, exists := sp.servers[configKey]; exists && !server.inUse {
 		server.inUse = true
 		return server, nil
 	}
-	
+
 	server, err := sp.createServer(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create server: %w", err)
 	}
-	
+
 	server.inUse = true
 	sp.servers[configKey] = server
-	
+
 	return server, nil
 }
 
 func (sp *serverPool) ReleaseServer(server *TestServer) {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	
+
 	server.inUse = false
 }
 
 func (sp *serverPool) createServer(config ServerConfig) (*TestServer, error) {
 	var server *httptest.Server
-	
+
 	if config.TLS {
 		server = httptest.NewTLSServer(config.Handler)
 	} else if config.Port != 0 {
@@ -91,9 +91,9 @@ func (sp *serverPool) createServer(config ServerConfig) (*TestServer, error) {
 	} else {
 		server = httptest.NewServer(config.Handler)
 	}
-	
+
 	port := sp.extractPort(server.URL)
-	
+
 	testServer := &TestServer{
 		URL:     server.URL,
 		Port:    port,
@@ -101,7 +101,7 @@ func (sp *serverPool) createServer(config ServerConfig) (*TestServer, error) {
 		server:  server,
 		config:  config,
 	}
-	
+
 	return testServer, nil
 }
 
@@ -110,9 +110,9 @@ func (sp *serverPool) extractPort(url string) int {
 	if err != nil {
 		return 0
 	}
-	
+
 	var port int
-	fmt.Sscanf(portStr, "%d", &port)
+	_, _ = fmt.Sscanf(portStr, "%d", &port) //nolint:errcheck
 	return port
 }
 
@@ -120,20 +120,20 @@ func (sp *serverPool) getConfigKey(config ServerConfig) string {
 	if config.ConfigName != "" {
 		return config.ConfigName
 	}
-	
+
 	return fmt.Sprintf("port_%d_tls_%t", config.Port, config.TLS)
 }
 
 func (sp *serverPool) Shutdown() {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
-	
+
 	for _, server := range sp.servers {
 		if server.server != nil {
 			server.server.Close()
 		}
 	}
-	
+
 	sp.servers = make(map[string]*TestServer)
 	sp.ports = make(map[int]bool)
 }
