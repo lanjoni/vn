@@ -380,6 +380,11 @@ func (m *MisconfigScanner) Scan() []MisconfigResult {
 	m.ClearResults()
 	m.ClearErrors()
 
+	if m.config.Threads <= 0 {
+		m.AddError(fmt.Errorf("number of threads must be greater than 0"))
+		return m.results
+	}
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, m.config.Threads)
 
