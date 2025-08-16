@@ -134,8 +134,6 @@ func TestMisconfigScanner_DefaultCredentials(t *testing.T) {
 	}
 }
 
-
-
 func TestMisconfigScanner_ErrorHandling(t *testing.T) {
 	t.Parallel()
 	// Server that immediately closes to simulate a connection error
