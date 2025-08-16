@@ -91,55 +91,25 @@ go build -o vn .
 
 ## Testing
 
-### Test Categories and Performance
+The project includes a comprehensive testing suite managed via the `Makefile`.
 
-The project uses a categorized test system for optimal performance:
+Tests are divided into several categories:
 
-| Category | Duration | Purpose | Command |
-|----------|----------|---------|---------|
-| **Unit Tests** | < 2s | Core logic testing | `make test-unit` |
-| **Fast Tests** | < 5s | Mock-based tests | `make test-fast` |
-| **Integration Tests** | < 30s | Local server tests | `make test-integration` |
-| **E2E Tests** | < 60s | Full workflow tests | `make test-e2e` |
+- **Unit Tests**: Fast tests for core logic located in the `internal/` and `cmd/` directories. Run with `make test-unit`.
+- **Integration Tests**: Tests that require external services or the local test server. Run with `make test-integration`.
+- **E2E Tests**: End-to-end tests that simulate real-world usage of the CLI. Run with `make test-e2e`.
 
-### Quick Test Commands
-
-```bash
-# Development workflow (fastest feedback)
-make test-quick          # Unit + Shared tests (~13s)
-
-# CI pipeline (comprehensive but efficient)
-make test-ci            # Unit + Shared + Integration (~18s)
-
-# Full test suite (all categories)
-make test               # All tests (~18s)
-
-# Individual categories
-make test-unit          # Unit tests only (~13s)
-make test-integration   # Integration tests with local servers (~5s)
-make test-e2e          # End-to-end workflow tests (~1s)
-make test-shared       # Shared infrastructure tests (~1s)
-
-# Performance and coverage
-make test-coverage     # Tests with coverage report
-make benchmark         # Performance benchmarks
-make performance-check # Validate performance targets
-```
+To run the entire test suite, use the `make test` command.
 
 ### Vulnerable Test Server
 
-A vulnerable test server is included for testing purposes:
+A vulnerable test server is included for testing purposes. To start it, run:
 
 ```bash
-# Start the test server
 cd test-server
 go run main.go
-
-# Test against the vulnerable server
-./vn sqli http://localhost:8080/?id=1
-./vn sqli http://localhost:8080/login --method POST --data "username=admin&password=secret"
-./vn misconfig http://localhost:8080
 ```
+
 
 ### Test Performance Optimizations
 
