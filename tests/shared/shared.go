@@ -14,8 +14,8 @@ var (
 	globalBuildManager       builders.BuildManager
 	globalServerPool         testserver.ServerPool
 	globalMockProvider       fixtures.MockProvider
-	globalResourceManager   *ResourceManager
-	globalMetricsCollector  *MetricsCollector
+	globalResourceManager    *ResourceManager
+	globalMetricsCollector   *MetricsCollector
 	globalRegressionDetector *RegressionDetector
 	initOnce                 sync.Once
 )

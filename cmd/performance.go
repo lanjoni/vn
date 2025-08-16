@@ -7,7 +7,13 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+
 	"vn/tests/shared"
+)
+
+const (
+	defaultThreshold = 25.0
+	dirMode          = 0755
 )
 
 var performanceCmd = &cobra.Command{
@@ -45,9 +51,9 @@ var regressionCmd = &cobra.Command{
 }
 
 var (
-	outputFormat    string
+	outputFormat     string
 	thresholdPercent float64
-	failOnViolation bool
+	failOnViolation  bool
 )
 
 func init() {
@@ -57,23 +63,25 @@ func init() {
 	performanceCmd.AddCommand(baselineCmd)
 	performanceCmd.AddCommand(regressionCmd)
 
-	validateCmd.Flags().BoolVar(&failOnViolation, "fail-on-violation", false, "Exit with non-zero code if validation fails")
+	validateCmd.Flags().BoolVar(&failOnViolation, "fail-on-violation", false,
+		"Exit with non-zero code if validation fails")
 	reportCmd.Flags().StringVar(&outputFormat, "format", "text", "Output format: text, csv, json")
-	regressionCmd.Flags().Float64Var(&thresholdPercent, "threshold", 25.0, "Regression threshold percentage")
-	regressionCmd.Flags().BoolVar(&failOnViolation, "fail-on-regression", false, "Exit with non-zero code if regression detected")
+	regressionCmd.Flags().Float64Var(&thresholdPercent, "threshold", defaultThreshold, "Regression threshold percentage")
+	regressionCmd.Flags().BoolVar(&failOnViolation, "fail-on-regression", false,
+		"Exit with non-zero code if regression detected")
 }
 
 func runValidate(cmd *cobra.Command, args []string) error {
 	metricsFile := args[0]
-	
+
 	metrics, err := loadMetrics(metricsFile)
 	if err != nil {
 		return fmt.Errorf("failed to load metrics: %w", err)
 	}
-	
+
 	validator := shared.NewPerformanceValidator()
 	validator.SetDefaultTargets()
-	
+
 	hasViolations := false
 	for _, metric := range metrics {
 		result := validator.ValidateMetrics(metric)
@@ -87,7 +95,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 			fmt.Printf("PASS: %s\n", result.TestName)
 		}
 	}
-	
+
 	if hasViolations {
 		fmt.Printf("\nValidation completed with violations\n")
 		if failOnViolation {
@@ -96,20 +104,20 @@ func runValidate(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Printf("\nAll validations passed\n")
 	}
-	
+
 	return nil
 }
 
 func runReport(cmd *cobra.Command, args []string) error {
 	metricsFile := args[0]
-	
+
 	metrics, err := loadMetrics(metricsFile)
 	if err != nil {
 		return fmt.Errorf("failed to load metrics: %w", err)
 	}
-	
+
 	generator := shared.NewReportGenerator(metrics)
-	
+
 	switch outputFormat {
 	case "text":
 		return generator.GenerateTextReport(os.Stdout)
@@ -128,30 +136,30 @@ func runReport(cmd *cobra.Command, args []string) error {
 func runBaseline(cmd *cobra.Command, args []string) error {
 	metricsFile := args[0]
 	baselineFile := args[1]
-	
+
 	metrics, err := loadMetrics(metricsFile)
 	if err != nil {
 		return fmt.Errorf("failed to load metrics: %w", err)
 	}
-	
+
 	baselines := shared.EstablishBaselines(metrics)
-	
-	if err := os.MkdirAll(filepath.Dir(baselineFile), 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
+
+	if mkdirErr := os.MkdirAll(filepath.Dir(baselineFile), dirMode); mkdirErr != nil {
+		return fmt.Errorf("failed to create directory: %w", mkdirErr)
 	}
-	
+
 	file, err := os.Create(baselineFile)
 	if err != nil {
 		return fmt.Errorf("failed to create baseline file: %w", err)
 	}
 	defer file.Close()
-	
+
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(baselines); err != nil {
 		return fmt.Errorf("failed to encode baselines: %w", err)
 	}
-	
+
 	fmt.Printf("Established baselines for %d tests in %s\n", len(baselines.Baselines), baselineFile)
 	return nil
 }
@@ -159,17 +167,17 @@ func runBaseline(cmd *cobra.Command, args []string) error {
 func runRegression(cmd *cobra.Command, args []string) error {
 	metricsFile := args[0]
 	baselineFile := args[1]
-	
+
 	metrics, err := loadMetrics(metricsFile)
 	if err != nil {
 		return fmt.Errorf("failed to load metrics: %w", err)
 	}
-	
+
 	baselines, err := loadBaselines(baselineFile)
 	if err != nil {
 		return fmt.Errorf("failed to load baselines: %w", err)
 	}
-	
+
 	detector := shared.NewRegressionDetector()
 	for testName, baseline := range baselines.Baselines {
 		detector.SetBaseline(testName, []shared.TestMetrics{
@@ -182,7 +190,7 @@ func runRegression(cmd *cobra.Command, args []string) error {
 			},
 		})
 	}
-	
+
 	hasRegressions := false
 	for _, metric := range metrics {
 		result, err := detector.DetectRegression(metric.TestName, metric, thresholdPercent)
@@ -190,7 +198,7 @@ func runRegression(cmd *cobra.Command, args []string) error {
 			fmt.Printf("ERROR: %s - %v\n", metric.TestName, err)
 			continue
 		}
-		
+
 		if result.Regressed {
 			hasRegressions = true
 			fmt.Printf("REGRESSION: %s\n", result.TestName)
@@ -199,7 +207,7 @@ func runRegression(cmd *cobra.Command, args []string) error {
 			fmt.Printf("PASS: %s\n", result.TestName)
 		}
 	}
-	
+
 	if hasRegressions {
 		fmt.Printf("\nRegressions detected\n")
 		if failOnViolation {
@@ -208,7 +216,7 @@ func runRegression(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Printf("\nNo regressions detected\n")
 	}
-	
+
 	return nil
 }
 
@@ -218,13 +226,13 @@ func loadMetrics(filename string) ([]shared.TestMetrics, error) {
 		return nil, err
 	}
 	defer file.Close()
-	
+
 	var metrics []shared.TestMetrics
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&metrics); err != nil {
 		return nil, err
 	}
-	
+
 	return metrics, nil
 }
 
@@ -234,12 +242,12 @@ func loadBaselines(filename string) (shared.PerformanceBaselines, error) {
 		return shared.PerformanceBaselines{}, err
 	}
 	defer file.Close()
-	
+
 	var baselines shared.PerformanceBaselines
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&baselines); err != nil {
 		return shared.PerformanceBaselines{}, err
 	}
-	
+
 	return baselines, nil
 }

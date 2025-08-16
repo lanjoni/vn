@@ -54,36 +54,36 @@ func TestMetricsCollectorDisabled(t *testing.T) {
 
 func TestTestTimer(t *testing.T) {
 	timer := StartTestTimer("TestTimerExample")
-	
+
 	timer.StartBuild()
 	time.Sleep(10 * time.Millisecond)
 	timer.EndBuild()
-	
+
 	timer.StartSetup()
 	time.Sleep(5 * time.Millisecond)
 	timer.EndSetup()
-	
+
 	timer.AddNetworkTime(15 * time.Millisecond)
 	timer.SetSuccess(true)
-	
+
 	metrics := timer.Finish()
-	
+
 	if metrics.TestName != "TestTimerExample" {
 		t.Errorf("Expected test name 'TestTimerExample', got '%s'", metrics.TestName)
 	}
-	
+
 	if metrics.BuildTime < 10*time.Millisecond {
 		t.Errorf("Expected build time >= 10ms, got %v", metrics.BuildTime)
 	}
-	
+
 	if metrics.SetupTime < 5*time.Millisecond {
 		t.Errorf("Expected setup time >= 5ms, got %v", metrics.SetupTime)
 	}
-	
+
 	if metrics.NetworkTime != 15*time.Millisecond {
 		t.Errorf("Expected network time 15ms, got %v", metrics.NetworkTime)
 	}
-	
+
 	if !metrics.Success {
 		t.Error("Expected success to be true")
 	}
@@ -144,7 +144,7 @@ func TestGetMetricsCollectorEnvironment(t *testing.T) {
 	defer os.Setenv("COLLECT_TEST_METRICS", originalValue)
 
 	os.Setenv("COLLECT_TEST_METRICS", "true")
-	
+
 	collector := GetMetricsCollector()
 	if !collector.IsEnabled() {
 		t.Error("Expected metrics collector to be enabled when COLLECT_TEST_METRICS=true")

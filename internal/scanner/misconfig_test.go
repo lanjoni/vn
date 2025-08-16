@@ -157,7 +157,7 @@ func TestMisconfigScanner_TestDirectoryListing(t *testing.T) {
 					if result.Finding != "Directory listing enabled" {
 						t.Errorf("Expected finding 'Directory listing enabled', got '%s'", result.Finding)
 					}
-					if result.RiskLevel != "Medium" {
+					if result.RiskLevel != riskMedium {
 						t.Errorf("Expected risk level 'Medium', got '%s'", result.RiskLevel)
 					}
 				}
@@ -389,7 +389,7 @@ func TestMisconfigScanner_TestSecurityHeaders(t *testing.T) {
 				for _, result := range results {
 					if result.Finding == expectedFinding {
 						found = true
-						if result.Category != "headers" {
+						if result.Category != categoryHeaders {
 							t.Errorf("Expected category 'headers', got '%s'", result.Category)
 						}
 						break
@@ -432,7 +432,7 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 			hstsHeader:      "includeSubDomains",
 			expectedResult:  true,
 			expectedFinding: "Weak HSTS configuration",
-			expectedRisk:    "Medium",
+			expectedRisk:    riskMedium,
 		},
 		{
 			name:           "HTTP site (HSTS not applicable)",
@@ -495,7 +495,7 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 						if result.RiskLevel != tt.expectedRisk {
 							t.Errorf("Expected risk level '%s', got '%s'", tt.expectedRisk, result.RiskLevel)
 						}
-						if result.Category != "headers" {
+						if result.Category != categoryHeaders {
 							t.Errorf("Expected category 'headers', got '%s'", result.Category)
 						}
 					}
@@ -518,7 +518,7 @@ func TestMisconfigScanner_TestHTTPSEnforcement(t *testing.T) {
 						if result.RiskLevel != tt.expectedRisk {
 							t.Errorf("Expected risk level '%s', got '%s'", tt.expectedRisk, result.RiskLevel)
 						}
-						if result.Category != "headers" {
+						if result.Category != categoryHeaders {
 							t.Errorf("Expected category 'headers', got '%s'", result.Category)
 						}
 					}
@@ -621,10 +621,10 @@ func TestMisconfigScanner_ValidateHeaderValue(t *testing.T) {
 					if result.Finding != tt.expectedFinding {
 						t.Errorf("Expected finding '%s', got '%s'", tt.expectedFinding, result.Finding)
 					}
-					if result.Category != "headers" {
+					if result.Category != categoryHeaders {
 						t.Errorf("Expected category 'headers', got '%s'", result.Category)
 					}
-					if result.RiskLevel != "Medium" {
+					if result.RiskLevel != riskMedium {
 						t.Errorf("Expected risk level 'Medium', got '%s'", result.RiskLevel)
 					}
 				}
@@ -838,7 +838,7 @@ func TestMisconfigScanner_TestDefaultCredentials(t *testing.T) {
 				for _, result := range results {
 					if result.Finding == tt.expectedFinding {
 						found = true
-						if result.Category != "defaults" {
+						if result.Category != categoryDefaults {
 							t.Errorf("Expected category 'defaults', got '%s'", result.Category)
 						}
 						if result.RiskLevel != "High" {
@@ -929,7 +929,7 @@ func TestMisconfigScanner_TestDefaultPages(t *testing.T) {
 				for _, result := range results {
 					if result.Finding == tt.expectedFinding {
 						found = true
-						if result.Category != "defaults" {
+						if result.Category != categoryDefaults {
 							t.Errorf("Expected category 'defaults', got '%s'", result.Category)
 						}
 						break
@@ -1020,7 +1020,7 @@ func TestMisconfigScanner_DetectVersionDisclosure(t *testing.T) {
 					if result.Finding != "Version information disclosed" {
 						t.Errorf("Expected finding 'Version information disclosed', got '%s'", result.Finding)
 					}
-					if result.Category != "defaults" {
+					if result.Category != categoryDefaults {
 						t.Errorf("Expected category 'defaults', got '%s'", result.Category)
 					}
 					if result.RiskLevel != "Low" {
@@ -1139,14 +1139,14 @@ func TestMisconfigScanner_TestHTTPMethods(t *testing.T) {
 			allowedMethods:  []string{"GET", "POST", "OPTIONS"},
 			expectedCount:   1,
 			expectedFinding: "Dangerous HTTP method enabled: OPTIONS",
-			expectedRisk:    "Medium",
+			expectedRisk:    riskMedium,
 		},
 		{
 			name:            "PATCH method enabled",
 			allowedMethods:  []string{"GET", "POST", "PATCH"},
 			expectedCount:   1,
 			expectedFinding: "Dangerous HTTP method enabled: PATCH",
-			expectedRisk:    "Medium",
+			expectedRisk:    riskMedium,
 		},
 	}
 
@@ -1191,7 +1191,7 @@ func TestMisconfigScanner_TestHTTPMethods(t *testing.T) {
 				for _, result := range results {
 					if strings.Contains(result.Finding, tt.expectedFinding) {
 						found = true
-						if result.Category != "server-config" {
+						if result.Category != categoryServerConfig {
 							t.Errorf("Expected category 'server-config', got '%s'", result.Category)
 						}
 						if result.RiskLevel != tt.expectedRisk {
@@ -1296,7 +1296,7 @@ func TestMisconfigScanner_TestServerBanner(t *testing.T) {
 					if result.RiskLevel != tt.expectedRisk {
 						t.Errorf("Expected risk level '%s', got '%s'", tt.expectedRisk, result.RiskLevel)
 					}
-					if result.Category != "server-config" {
+					if result.Category != categoryServerConfig {
 						t.Errorf("Expected category 'server-config', got '%s'", result.Category)
 					}
 				}
@@ -1406,7 +1406,7 @@ at com.example.Servlet.doGet(Servlet.java:15)</pre></body></html>`,
 				for _, result := range results {
 					if result.Finding == tt.expectedFinding {
 						found = true
-						if result.Category != "server-config" {
+						if result.Category != categoryServerConfig {
 							t.Errorf("Expected category 'server-config', got '%s'", result.Category)
 						}
 						break
@@ -1511,10 +1511,10 @@ func TestMisconfigScanner_TestInsecureRedirects(t *testing.T) {
 				for _, result := range results {
 					if result.Finding == tt.expectedFinding {
 						found = true
-						if result.Category != "server-config" {
+						if result.Category != categoryServerConfig {
 							t.Errorf("Expected category 'server-config', got '%s'", result.Category)
 						}
-						if result.RiskLevel != "Medium" {
+						if result.RiskLevel != riskMedium {
 							t.Errorf("Expected risk level 'Medium', got '%s'", result.RiskLevel)
 						}
 						break
@@ -1816,7 +1816,7 @@ func TestMisconfigScanner_ResultAggregation(t *testing.T) {
 		Category:    "headers",
 		Finding:     "Missing security header",
 		Evidence:    "X-Frame-Options not found",
-		RiskLevel:   "Medium",
+		RiskLevel:   riskMedium,
 		Remediation: "Add header",
 	}
 

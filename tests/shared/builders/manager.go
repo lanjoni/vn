@@ -10,6 +10,10 @@ import (
 	"sync"
 )
 
+const (
+	tempDirMode = 0755
+)
+
 type BuildManager interface {
 	GetBinary(name string) (string, error)
 	BuildOnce(name, source string) (string, error)
@@ -25,7 +29,7 @@ type buildManager struct {
 func NewBuildManager() BuildManager {
 	tempDir := filepath.Join(os.TempDir(), "vn-test-builds")
 	//nolint:errcheck
-	_ = os.MkdirAll(tempDir, 0755) // Best effort, ignore error
+	_ = os.MkdirAll(tempDir, tempDirMode) // Best effort, ignore error
 
 	return &buildManager{
 		binaries: make(map[string]string),

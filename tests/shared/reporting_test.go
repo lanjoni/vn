@@ -152,7 +152,7 @@ func TestGenerateCSVReport(t *testing.T) {
 
 func TestGenerateRegressionReport(t *testing.T) {
 	detector := NewRegressionDetector()
-	
+
 	baselineMetrics := []TestMetrics{
 		{TestName: "Test1", ExecutionTime: 100 * time.Millisecond, Success: true},
 	}

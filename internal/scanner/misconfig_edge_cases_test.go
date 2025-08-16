@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const envPath = "/.env"
+
 func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -21,7 +23,7 @@ func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
 		Headers: []string{},
 		Timeout: 5 * time.Second,
 		Threads: 1,
-		Tests:   []string{"files", "headers", "defaults"},
+		Tests:   []string{"files", categoryHeaders, "defaults"},
 	}
 
 	misconfigScanner := NewMisconfigScanner(config)
@@ -43,7 +45,7 @@ func TestMisconfigScanner_EdgeCases_EmptyResponses(t *testing.T) {
 	// Should still find missing security headers
 	foundHeaders := false
 	for _, result := range results {
-		if result.Category == "headers" {
+		if result.Category == categoryHeaders {
 			foundHeaders = true
 			break
 		}
@@ -175,7 +177,7 @@ func TestMisconfigScanner_EdgeCases_RedirectLoops(t *testing.T) {
 		Headers: []string{},
 		Timeout: 5 * time.Second,
 		Threads: 1,
-		Tests:   []string{"headers"},
+		Tests:   []string{categoryHeaders},
 	}
 
 	misconfigScanner := NewMisconfigScanner(config)
@@ -208,7 +210,7 @@ func TestMisconfigScanner_EdgeCases_InvalidHeaders(t *testing.T) {
 		Headers: []string{},
 		Timeout: 5 * time.Second,
 		Threads: 1,
-		Tests:   []string{"headers"},
+		Tests:   []string{categoryHeaders},
 	}
 
 	misconfigScanner := NewMisconfigScanner(config)
@@ -233,7 +235,7 @@ func TestMisconfigScanner_EdgeCases_InvalidHeaders(t *testing.T) {
 
 func TestMisconfigScanner_EdgeCases_BinaryContent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/.env" {
+		if r.URL.Path == envPath {
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.WriteHeader(http.StatusOK)
 			// Binary content that might contain sensitive data
@@ -284,7 +286,7 @@ func TestMisconfigScanner_EdgeCases_HTTPSWithSelfSignedCert(t *testing.T) {
 		Headers: []string{},
 		Timeout: 5 * time.Second,
 		Threads: 1,
-		Tests:   []string{"headers"},
+		Tests:   []string{categoryHeaders},
 	}
 
 	misconfigScanner := NewMisconfigScanner(config)
@@ -318,7 +320,7 @@ func TestMisconfigScanner_EdgeCases_CaseInsensitiveHeaders(t *testing.T) {
 		Headers: []string{},
 		Timeout: 5 * time.Second,
 		Threads: 1,
-		Tests:   []string{"headers"},
+		Tests:   []string{categoryHeaders},
 	}
 
 	misconfigScanner := NewMisconfigScanner(config)
@@ -354,7 +356,7 @@ func TestMisconfigScanner_EdgeCases_MultipleHeaderValues(t *testing.T) {
 		Headers: []string{},
 		Timeout: 5 * time.Second,
 		Threads: 1,
-		Tests:   []string{"headers"},
+		Tests:   []string{categoryHeaders},
 	}
 
 	misconfigScanner := NewMisconfigScanner(config)
@@ -529,7 +531,7 @@ func TestMisconfigScanner_EdgeCases_MalformedCustomHeaders(t *testing.T) {
 		},
 		Timeout: 5 * time.Second,
 		Threads: 1,
-		Tests:   []string{"headers"},
+		Tests:   []string{categoryHeaders},
 	}
 
 	misconfigScanner := NewMisconfigScanner(config)

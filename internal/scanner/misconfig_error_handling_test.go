@@ -12,6 +12,11 @@ import (
 	"time"
 )
 
+const (
+	configPath    = "/config.php"
+	backupSQLPath = "/backup.sql"
+)
+
 func TestMisconfigScanner_HTTPRequestErrorHandling(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -211,9 +216,9 @@ func TestMisconfigScanner_InvalidUTF8Handling(t *testing.T) {
 func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.URL.Path == "/.env":
+		case r.URL.Path == envPath:
 			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte("DB_PASSWORD=secret")) //nolint:errcheck
+			_, _ = w.Write([]byte("DB_PASSWORD=secret"))
 		case strings.Contains(r.URL.Path, "timeout"):
 			time.Sleep(2 * time.Second) // Cause timeout for some requests
 			return
@@ -259,7 +264,7 @@ func TestMisconfigScanner_GracefulDegradation(t *testing.T) {
 
 func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/config.php" || r.URL.Path == "/backup.sql" {
+		if r.URL.Path == configPath || r.URL.Path == backupSQLPath {
 			time.Sleep(2 * time.Second) // Cause timeout
 			return
 		}
@@ -306,7 +311,7 @@ func TestMisconfigScanner_ConcurrentErrorHandling(t *testing.T) {
 func TestMisconfigScanner_PanicRecovery(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("normal response")) //nolint:errcheck
+		_, _ = w.Write([]byte("normal response"))
 	}))
 	defer server.Close()
 
@@ -330,7 +335,7 @@ func TestMisconfigScanner_PanicRecovery(t *testing.T) {
 
 	// Test that error collection works
 	errors := misconfigScanner.GetErrors()
-	
+
 	// Errors slice should exist (even if empty)
 	if errors == nil {
 		t.Fatal("Errors slice should not be nil")

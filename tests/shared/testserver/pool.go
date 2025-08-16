@@ -77,9 +77,10 @@ func (sp *serverPool) ReleaseServer(server *TestServer) {
 func (sp *serverPool) createServer(config ServerConfig) (*TestServer, error) {
 	var server *httptest.Server
 
-	if config.TLS {
+	switch {
+	case config.TLS:
 		server = httptest.NewTLSServer(config.Handler)
-	} else if config.Port != 0 {
+	case config.Port != 0:
 		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", config.Port))
 		if err != nil {
 			return nil, fmt.Errorf("failed to listen on port %d: %w", config.Port, err)
@@ -88,7 +89,7 @@ func (sp *serverPool) createServer(config ServerConfig) (*TestServer, error) {
 		server.Listener = listener
 		server.Start()
 		sp.ports[config.Port] = true
-	} else {
+	default:
 		server = httptest.NewServer(config.Handler)
 	}
 

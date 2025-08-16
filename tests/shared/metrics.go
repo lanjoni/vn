@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	dirMode = 0755
+)
+
 type TestMetrics struct {
 	TestName      string        `json:"test_name"`
 	ExecutionTime time.Duration `json:"execution_time"`
@@ -29,10 +33,6 @@ type MetricsCollector struct {
 	mu      sync.RWMutex
 	enabled bool
 }
-
-var (
-	metricsOnce sync.Once
-)
 
 func GetMetricsCollector() *MetricsCollector {
 	return &MetricsCollector{
@@ -70,7 +70,7 @@ func (mc *MetricsCollector) RecordMetrics(metrics TestMetrics) {
 func (mc *MetricsCollector) GetMetrics() []TestMetrics {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
-	
+
 	result := make([]TestMetrics, len(mc.metrics))
 	copy(result, mc.metrics)
 	return result
@@ -86,7 +86,7 @@ func (mc *MetricsCollector) SaveToFile(filename string) error {
 	mc.mu.RLock()
 	defer mc.mu.RUnlock()
 
-	if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(filename), dirMode); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -177,12 +177,12 @@ func (tt *TestTimer) SetError(err error) {
 
 func (tt *TestTimer) Finish() TestMetrics {
 	endTime := time.Now()
-	
+
 	var buildTime time.Duration
 	if !tt.buildEnd.IsZero() && !tt.buildStart.IsZero() {
 		buildTime = tt.buildEnd.Sub(tt.buildStart)
 	}
-	
+
 	var setupTime time.Duration
 	if !tt.setupEnd.IsZero() && !tt.setupStart.IsZero() {
 		setupTime = tt.setupEnd.Sub(tt.setupStart)

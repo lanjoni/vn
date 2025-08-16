@@ -44,7 +44,7 @@ func StartTestMetrics(t *testing.T) *TestTimer {
 
 func MeasureTestExecution(t *testing.T, testFunc func()) {
 	t.Helper()
-	
+
 	timer := StartTestMetrics(t)
 	defer func() {
 		if r := recover(); r != nil {
@@ -53,7 +53,7 @@ func MeasureTestExecution(t *testing.T, testFunc func()) {
 			panic(r)
 		}
 	}()
-	
+
 	testFunc()
 	timer.SetSuccess(!t.Failed())
 	timer.Finish()
@@ -61,7 +61,7 @@ func MeasureTestExecution(t *testing.T, testFunc func()) {
 
 func MeasureTestExecutionWithSetup(t *testing.T, setupFunc func(), testFunc func()) {
 	t.Helper()
-	
+
 	timer := StartTestMetrics(t)
 	defer func() {
 		if r := recover(); r != nil {
@@ -70,11 +70,11 @@ func MeasureTestExecutionWithSetup(t *testing.T, setupFunc func(), testFunc func
 			panic(r)
 		}
 	}()
-	
+
 	timer.StartSetup()
 	setupFunc()
 	timer.EndSetup()
-	
+
 	testFunc()
 	timer.SetSuccess(!t.Failed())
 	timer.Finish()

@@ -7,14 +7,18 @@ import (
 	"time"
 )
 
+const (
+	p95 = 0.95
+)
+
 type PerformanceBaseline struct {
-	TestName           string        `json:"test_name"`
+	TestName            string        `json:"test_name"`
 	MedianExecutionTime time.Duration `json:"median_execution_time"`
-	P95ExecutionTime   time.Duration `json:"p95_execution_time"`
-	MedianBuildTime    time.Duration `json:"median_build_time"`
-	MedianNetworkTime  time.Duration `json:"median_network_time"`
-	SampleCount        int           `json:"sample_count"`
-	LastUpdated        time.Time     `json:"last_updated"`
+	P95ExecutionTime    time.Duration `json:"p95_execution_time"`
+	MedianBuildTime     time.Duration `json:"median_build_time"`
+	MedianNetworkTime   time.Duration `json:"median_network_time"`
+	SampleCount         int           `json:"sample_count"`
+	LastUpdated         time.Time     `json:"last_updated"`
 }
 
 type RegressionDetector struct {
@@ -44,13 +48,17 @@ func (rd *RegressionDetector) SetBaseline(testName string, metrics []TestMetrics
 	}
 
 	baseline := PerformanceBaseline{
-		TestName:           testName,
-		MedianExecutionTime: calculateMedianDuration(successfulMetrics, func(m TestMetrics) time.Duration { return m.ExecutionTime }),
-		P95ExecutionTime:   calculateP95Duration(successfulMetrics, func(m TestMetrics) time.Duration { return m.ExecutionTime }),
-		MedianBuildTime:    calculateMedianDuration(successfulMetrics, func(m TestMetrics) time.Duration { return m.BuildTime }),
-		MedianNetworkTime:  calculateMedianDuration(successfulMetrics, func(m TestMetrics) time.Duration { return m.NetworkTime }),
-		SampleCount:        len(successfulMetrics),
-		LastUpdated:        time.Now(),
+		TestName: testName,
+		MedianExecutionTime: calculateMedianDuration(successfulMetrics,
+			func(m TestMetrics) time.Duration { return m.ExecutionTime }),
+		P95ExecutionTime: calculateP95Duration(successfulMetrics,
+			func(m TestMetrics) time.Duration { return m.ExecutionTime }),
+		MedianBuildTime: calculateMedianDuration(successfulMetrics,
+			func(m TestMetrics) time.Duration { return m.BuildTime }),
+		MedianNetworkTime: calculateMedianDuration(successfulMetrics,
+			func(m TestMetrics) time.Duration { return m.NetworkTime }),
+		SampleCount: len(successfulMetrics),
+		LastUpdated: time.Now(),
 	}
 
 	rd.baselines[testName] = baseline
@@ -61,7 +69,8 @@ func (rd *RegressionDetector) GetBaseline(testName string) (PerformanceBaseline,
 	return baseline, exists
 }
 
-func (rd *RegressionDetector) DetectRegression(testName string, currentMetrics TestMetrics, thresholdPercent float64) (*RegressionResult, error) {
+func (rd *RegressionDetector) DetectRegression(testName string, currentMetrics TestMetrics,
+	thresholdPercent float64) (*RegressionResult, error) {
 	baseline, exists := rd.baselines[testName]
 	if !exists {
 		return nil, fmt.Errorf("no baseline found for test: %s", testName)
@@ -69,11 +78,11 @@ func (rd *RegressionDetector) DetectRegression(testName string, currentMetrics T
 
 	if !currentMetrics.Success {
 		return &RegressionResult{
-			TestName:   testName,
-			Regressed:  true,
-			Reason:     "Test failed",
-			Baseline:   baseline,
-			Current:    currentMetrics,
+			TestName:  testName,
+			Regressed: true,
+			Reason:    "Test failed",
+			Baseline:  baseline,
+			Current:   currentMetrics,
 		}, nil
 	}
 
@@ -89,7 +98,7 @@ func (rd *RegressionDetector) DetectRegression(testName string, currentMetrics T
 
 	if executionRegression > thresholdPercent {
 		result.Regressed = true
-		result.Reason = fmt.Sprintf("Execution time regressed by %.1f%% (baseline: %v, current: %v)", 
+		result.Reason = fmt.Sprintf("Execution time regressed by %.1f%% (baseline: %v, current: %v)",
 			executionRegression, baseline.MedianExecutionTime, currentMetrics.ExecutionTime)
 		result.ExecutionRegression = executionRegression
 	}
@@ -99,7 +108,7 @@ func (rd *RegressionDetector) DetectRegression(testName string, currentMetrics T
 		if result.Reason != "" {
 			result.Reason += "; "
 		}
-		result.Reason += fmt.Sprintf("Build time regressed by %.1f%% (baseline: %v, current: %v)", 
+		result.Reason += fmt.Sprintf("Build time regressed by %.1f%% (baseline: %v, current: %v)",
 			buildRegression, baseline.MedianBuildTime, currentMetrics.BuildTime)
 		result.BuildRegression = buildRegression
 	}
@@ -109,7 +118,7 @@ func (rd *RegressionDetector) DetectRegression(testName string, currentMetrics T
 		if result.Reason != "" {
 			result.Reason += "; "
 		}
-		result.Reason += fmt.Sprintf("Network time regressed by %.1f%% (baseline: %v, current: %v)", 
+		result.Reason += fmt.Sprintf("Network time regressed by %.1f%% (baseline: %v, current: %v)",
 			networkRegression, baseline.MedianNetworkTime, currentMetrics.NetworkTime)
 		result.NetworkRegression = networkRegression
 	}
@@ -118,14 +127,14 @@ func (rd *RegressionDetector) DetectRegression(testName string, currentMetrics T
 }
 
 type RegressionResult struct {
-	TestName           string             `json:"test_name"`
-	Regressed          bool               `json:"regressed"`
-	Reason             string             `json:"reason"`
-	ExecutionRegression float64           `json:"execution_regression"`
-	BuildRegression    float64            `json:"build_regression"`
-	NetworkRegression  float64            `json:"network_regression"`
-	Baseline           PerformanceBaseline `json:"baseline"`
-	Current            TestMetrics        `json:"current"`
+	TestName            string              `json:"test_name"`
+	Regressed           bool                `json:"regressed"`
+	Reason              string              `json:"reason"`
+	ExecutionRegression float64             `json:"execution_regression"`
+	BuildRegression     float64             `json:"build_regression"`
+	NetworkRegression   float64             `json:"network_regression"`
+	Baseline            PerformanceBaseline `json:"baseline"`
+	Current             TestMetrics         `json:"current"`
 }
 
 func calculateMedianDuration(metrics []TestMetrics, extractor func(TestMetrics) time.Duration) time.Duration {
@@ -163,7 +172,7 @@ func calculateP95Duration(metrics []TestMetrics, extractor func(TestMetrics) tim
 		return durations[i] < durations[j]
 	})
 
-	index := int(math.Ceil(0.95 * float64(len(durations)))) - 1
+	index := int(math.Ceil(p95*float64(len(durations)))) - 1
 	if index < 0 {
 		index = 0
 	}
@@ -178,6 +187,6 @@ func calculateRegressionPercent(baseline, current time.Duration) float64 {
 	if baseline == 0 {
 		return 0
 	}
-	
+
 	return ((float64(current) - float64(baseline)) / float64(baseline)) * 100
 }

@@ -11,7 +11,7 @@ import (
 func TestMisconfigScanner_IntegratedErrorHandling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/.env":
+		case envPath:
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("DB_PASSWORD=secret123"))
 		case "/config.php":
@@ -120,7 +120,7 @@ func TestMisconfigScanner_ErrorRecoveryAndContinuation(t *testing.T) {
 	misconfigScanner.ClearErrors()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/.env" {
+		if r.URL.Path == envPath {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("API_KEY=test123"))
 		} else {

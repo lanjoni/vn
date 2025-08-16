@@ -17,7 +17,7 @@ func TestMisconfigScanner_ConcurrentPerformance(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		switch r.URL.Path {
-		case "/.env":
+		case envPath:
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("DB_PASSWORD=secret123"))
 		case "/config.php":
@@ -118,7 +118,7 @@ func TestMisconfigScanner_LargeScaleScanning(t *testing.T) {
 			time.Sleep(5 * time.Millisecond)
 		}
 
-		if r.URL.Path == "/.env" {
+		if r.URL.Path == envPath {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("API_KEY=test123"))
 		} else {
@@ -158,7 +158,7 @@ func TestMisconfigScanner_LargeScaleScanning(t *testing.T) {
 
 func TestMisconfigScanner_MemoryUsage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/.env" {
+		if r.URL.Path == envPath {
 			largeContent := make([]byte, 1024*1024)
 			for i := range largeContent {
 				largeContent[i] = 'A'
@@ -335,7 +335,7 @@ func TestMisconfigScanner_ResourceCleanupPerformance(t *testing.T) {
 func BenchmarkMisconfigScanner_FullScan(b *testing.B) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/.env":
+		case envPath:
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("DB_PASSWORD=secret"))
 		default:
@@ -365,7 +365,7 @@ func BenchmarkMisconfigScanner_FullScan(b *testing.B) {
 
 func BenchmarkMisconfigScanner_SensitiveFiles(b *testing.B) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/.env" {
+		if r.URL.Path == envPath {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("API_KEY=test"))
 		} else {

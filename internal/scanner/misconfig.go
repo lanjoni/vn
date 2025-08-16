@@ -264,14 +264,19 @@ func (m *MisconfigScanner) safeReadResponse(resp *http.Response, maxSize int64) 
 
 	if !utf8.Valid(body) {
 		m.AddError(fmt.Errorf("response contains invalid UTF-8 encoding"))
-		body = []byte(strings.ToValidUTF8(string(body), "�"))
+		body = []byte(strings.ToValidUTF8(string(body), ""))
 	}
 
 	return body, nil
 }
 
 func (m *MisconfigScanner) createHTTPRequest(method, url string, body io.Reader) (*http.Request, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
+	return m.createHTTPRequestWithContext(context.Background(), method, url, body)
+}
+
+func (m *MisconfigScanner) createHTTPRequestWithContext(ctx context.Context, method,
+	url string, body io.Reader) (*http.Request, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.config.Timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
@@ -366,7 +371,7 @@ var directoryListingPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)<title>.*index of.*</title>`),
 	regexp.MustCompile(`(?i)<h1>index of`),
 	regexp.MustCompile(`(?i)directory listing for`),
-	regexp.MustCompile(`(?i)<pre><a href="\.\./"`),
+	regexp.MustCompile(`(?i)<pre><a href="\.\./">`),
 	regexp.MustCompile(`(?i)parent directory</a>`),
 	regexp.MustCompile(`(?i)<th><a href="\?C=N;O=D">name</a></th>`),
 }
@@ -513,7 +518,7 @@ func (m *MisconfigScanner) TestSingleFile(file SensitiveFile) *MisconfigResult {
 func (m *MisconfigScanner) testSingleFile(file SensitiveFile) *MisconfigResult {
 	targetURL := strings.TrimSuffix(m.config.URL, "/") + file.Path
 
-	req, err := m.createHTTPRequest(file.Method, targetURL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), file.Method, targetURL, nil)
 	if err != nil {
 		return nil
 	}
@@ -556,7 +561,7 @@ func (m *MisconfigScanner) testSingleFile(file SensitiveFile) *MisconfigResult {
 func (m *MisconfigScanner) TestDirectoryListing(path string) *MisconfigResult {
 	targetURL := strings.TrimSuffix(m.config.URL, "/") + path
 
-	req, err := m.createHTTPRequest(httpMethodGET, targetURL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), httpMethodGET, targetURL, nil)
 	if err != nil {
 		return nil
 	}
@@ -665,7 +670,7 @@ func (m *MisconfigScanner) TestBackupFiles() []MisconfigResult {
 func (m *MisconfigScanner) testBackupFile(backupPath string) *MisconfigResult {
 	targetURL := strings.TrimSuffix(m.config.URL, "/") + backupPath
 
-	req, err := m.createHTTPRequest(httpMethodGET, targetURL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), httpMethodGET, targetURL, nil)
 	if err != nil {
 		return nil
 	}
@@ -707,7 +712,7 @@ func (m *MisconfigScanner) testBackupFile(backupPath string) *MisconfigResult {
 func (m *MisconfigScanner) TestSecurityHeaders() []MisconfigResult {
 	var results []MisconfigResult
 
-	req, err := m.createHTTPRequest(m.config.Method, m.config.URL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), m.config.Method, m.config.URL, nil)
 	if err != nil {
 		return results
 	}
@@ -772,7 +777,7 @@ func (m *MisconfigScanner) analyzeSecurityHeader(resp *http.Response, secHeader 
 }
 
 func (m *MisconfigScanner) TestHTTPSEnforcement() *MisconfigResult {
-	req, err := m.createHTTPRequest(m.config.Method, m.config.URL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), m.config.Method, m.config.URL, nil)
 	if err != nil {
 		return nil
 	}
@@ -956,7 +961,7 @@ func (m *MisconfigScanner) discoverLoginEndpoints() []string {
 }
 
 func (m *MisconfigScanner) hasLoginForm(loginURL string) bool {
-	req, err := m.createHTTPRequest(httpMethodGET, loginURL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), httpMethodGET, loginURL, nil)
 	if err != nil {
 		return false
 	}
@@ -1132,7 +1137,7 @@ func (m *MisconfigScanner) TestDefaultPages() []MisconfigResult {
 }
 
 func (m *MisconfigScanner) testDefaultPage(pageURL string) *MisconfigResult {
-	req, err := m.createHTTPRequest(httpMethodGET, pageURL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), httpMethodGET, pageURL, nil)
 	if err != nil {
 		return nil
 	}
@@ -1238,7 +1243,7 @@ func (m *MisconfigScanner) TestHTTPMethods() []MisconfigResult {
 }
 
 func (m *MisconfigScanner) testHTTPMethod(method HTTPMethod) *MisconfigResult {
-	req, err := m.createHTTPRequest(method.Method, m.config.URL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), method.Method, m.config.URL, nil)
 	if err != nil {
 		return nil
 	}
@@ -1270,7 +1275,7 @@ func (m *MisconfigScanner) testHTTPMethod(method HTTPMethod) *MisconfigResult {
 }
 
 func (m *MisconfigScanner) TestServerBanner() *MisconfigResult {
-	req, err := m.createHTTPRequest(m.config.Method, m.config.URL, nil)
+	req, err := m.createHTTPRequestWithContext(context.Background(), m.config.Method, m.config.URL, nil)
 	if err != nil {
 		return nil
 	}
