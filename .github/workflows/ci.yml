@@ -37,11 +37,14 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
     
-    - name: Run unit tests
-      run: make test-unit
+    - name: Run tests
+      run: make test
     
     - name: Generate coverage report
       run: make test-coverage
+    
+    - name: Validate test performance
+      run: make performance-check
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -57,43 +60,6 @@ jobs:
       with:
         name: coverage-report-${{ matrix.go-version }}
         path: coverage.html
-
-  integration-test:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: test
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.23'
-    
-    - name: Cache Go modules
-      uses: actions/cache@v4
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    
-    - name: Download dependencies
-      run: go mod download
-    
-    - name: Run integration tests
-      run: make test-integration
-    
-    - name: Run E2E tests
-      run: make test-e2e
-    
-    - name: Run shared tests
-      run: make test-shared
-    
-    - name: Validate test performance
-      run: make performance-check
 
   lint:
     name: Lint
