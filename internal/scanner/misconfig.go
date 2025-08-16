@@ -156,7 +156,11 @@ func (m *MisconfigScanner) GetClient() *http.Client {
 }
 
 func (m *MisconfigScanner) GetResults() []MisconfigResult {
-	return m.results
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	results := make([]MisconfigResult, len(m.results))
+	copy(results, m.results)
+	return results
 }
 
 func (m *MisconfigScanner) AddResult(result MisconfigResult) {
@@ -423,7 +427,12 @@ func (m *MisconfigScanner) Scan() []MisconfigResult {
 	}
 
 	wg.Wait()
-	return m.results
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	results := make([]MisconfigResult, len(m.results))
+	copy(results, m.results)
+	return results
 }
 
 func (m *MisconfigScanner) runSensitiveFilesTests() {
