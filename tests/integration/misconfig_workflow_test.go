@@ -315,11 +315,15 @@ func TestMisconfigScanner_WorkflowWithDifferentMethods(t *testing.T) {
 func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
 	t.Parallel()
 	timeouts := shared.GetOptimizedTimeouts()
-	requestCount := 0
+	var requestCount int
+	var mu sync.Mutex
 	errorRecoveryHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		requestCount++
+		currentRequestCount := requestCount
+		mu.Unlock()
 
-		if (r.URL.Path == "/config.php" || r.URL.Path == "/backup.sql") && requestCount%2 == 0 {
+		if (r.URL.Path == "/config.php" || r.URL.Path == "/backup.sql") && currentRequestCount%2 == 0 {
 			time.Sleep(timeouts.HTTPRequest + 100*time.Millisecond)
 			return
 		}
