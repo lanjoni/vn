@@ -4,27 +4,14 @@
 package integration
 
 import (
-	"net/http/httptest"
 	"os/exec"
 	"strings"
-	"sync"
 	"testing"
 
 	"vn/tests/shared/fixtures"
 )
 
-var (
-	sharedMockServer *httptest.Server
-	mockServerOnce   sync.Once
-)
 
-func getSharedMockServer() *httptest.Server {
-	mockServerOnce.Do(func() {
-		provider := fixtures.NewMockProvider()
-		sharedMockServer = provider.CreateHTTPBinMock()
-	})
-	return sharedMockServer
-}
 
 func TestMisconfigCLIFlags(t *testing.T) {
 	t.Parallel()
@@ -33,7 +20,9 @@ func TestMisconfigCLIFlags(t *testing.T) {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
 
-	mockServer := getSharedMockServer()
+	provider := fixtures.NewMockProvider()
+	mockServer := provider.CreateHTTPBinMock()
+	defer mockServer.Close()
 
 	testCases := []struct {
 		name           string
@@ -133,7 +122,9 @@ func TestMisconfigCLIResultDisplay(t *testing.T) {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
 
-	mockServer := getSharedMockServer()
+	provider := fixtures.NewMockProvider()
+	mockServer := provider.CreateHTTPBinMock()
+	defer mockServer.Close()
 
 	cmd := exec.Command(binaryPath, "misconfig", mockServer.URL,
 		"--tests", "files", "--timeout", "10")
@@ -215,7 +206,9 @@ func TestMisconfigCLIErrorHandling(t *testing.T) {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
 
-	mockServer := getSharedMockServer()
+	provider := fixtures.NewMockProvider()
+	mockServer := provider.CreateHTTPBinMock()
+	defer mockServer.Close()
 
 	testCases := []struct {
 		name string
@@ -261,7 +254,9 @@ func TestMisconfigCLIAdvancedFeatures(t *testing.T) {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
 
-	mockServer := getSharedMockServer()
+	provider := fixtures.NewMockProvider()
+	mockServer := provider.CreateHTTPBinMock()
+	defer mockServer.Close()
 
 	testCases := []struct {
 		name           string
@@ -337,7 +332,9 @@ func TestMisconfigCLIOutputFormatting(t *testing.T) {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
 
-	mockServer := getSharedMockServer()
+	provider := fixtures.NewMockProvider()
+	mockServer := provider.CreateHTTPBinMock()
+	defer mockServer.Close()
 
 	cmd := exec.Command(binaryPath, "misconfig", mockServer.URL,
 		"--tests", "headers", "--timeout", "10")
@@ -386,7 +383,9 @@ func TestMisconfigCLIEdgeCases(t *testing.T) {
 		t.Fatalf("Failed to build CLI: %v", err)
 	}
 
-	mockServer := getSharedMockServer()
+	provider := fixtures.NewMockProvider()
+	mockServer := provider.CreateHTTPBinMock()
+	defer mockServer.Close()
 
 	testCases := []struct {
 		name        string
