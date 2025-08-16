@@ -34,6 +34,13 @@ Examples:
   vn misconfig https://example.com --method POST --headers "Authorization: Bearer token"
   vn misconfig https://example.com --threads 10 --timeout 15`,
 	Args: cobra.ExactArgs(1),
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		threads, _ := cmd.Flags().GetInt("threads")
+		if threads <= 0 {
+			return fmt.Errorf("number of threads must be greater than 0")
+		}
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		url := args[0]
 
