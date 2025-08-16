@@ -196,6 +196,12 @@ func (m *MisconfigScanner) ClearErrors() {
 	m.errors = make([]error, 0)
 }
 
+func (m *MisconfigScanner) CloseIdleConnections() {
+	if transport, ok := m.client.Transport.(*http.Transport); ok {
+		transport.CloseIdleConnections()
+	}
+}
+
 func (m *MisconfigScanner) makeHTTPRequest(req *http.Request) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.Timeout)
 	defer cancel()

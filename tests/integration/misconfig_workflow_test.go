@@ -373,6 +373,10 @@ func TestMisconfigScanner_WorkflowErrorRecovery(t *testing.T) {
 	}
 
 	misconfigScanner.ClearErrors()
+	mu.Lock()
+	requestCount = 0
+	mu.Unlock()
+	misconfigScanner.CloseIdleConnections()
 	newResults := misconfigScanner.TestSensitiveFiles()
 
 	if len(newResults) == 0 {
