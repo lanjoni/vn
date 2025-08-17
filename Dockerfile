@@ -43,5 +43,5 @@ CMD ["--help"]
 # Metadata
 LABEL org.opencontainers.image.title="VN - Vulnerability Navigator"
 LABEL org.opencontainers.image.description="A CLI tool for OWASP Top 10 security testing"
-LABEL org.opencontainers.image.source="https://github.com/your-username/vn"
-LABEL org.opencontainers.image.licenses="MIT" 
+LABEL org.opencontainers.image.source="https://github.com/lanjoni/vn"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
