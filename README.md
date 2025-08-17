@@ -16,7 +16,7 @@ A powerful CLI tool for security testing based on OWASP Top 10 vulnerabilities.
 ## Installation
 
 ```bash
-git clone <your-repo>
+git clone https://github.com/lanjoni/vn.git
 cd vn
 go build -o vn .
 ```
@@ -141,39 +141,6 @@ A vulnerable test server is included for testing purposes. To start it, run:
 cd test-server
 go run main.go
 ```
-
-
-### Test Performance Optimizations
-
-The test suite has been heavily optimized for speed and reliability:
-
-#### Performance Achievements
-- **97% faster execution**: Reduced from 10+ minutes to 15.5 seconds
-- **Maintained coverage**: 63.2% test coverage across all components
-- **Zero flakiness increase**: Reliable parallel execution
-- **Automated monitoring**: Performance regression detection
-
-#### Optimization Techniques
-- **Shared Infrastructure**: Binary builds and test servers are reused across tests
-- **Parallel Execution**: Independent tests run concurrently using `t.Parallel()`
-- **Mock Services**: External dependencies replaced with fast local mocks
-- **Optimized Timeouts**: Reduced wait times for test environments
-- **Build Tags**: Selective test execution based on categories
-- **Resource Management**: Efficient cleanup and resource sharing
-
-#### Performance Monitoring
-```bash
-# Measure current performance
-./scripts/measure-test-performance.sh
-
-# Check for regressions
-python3 scripts/check-performance-regression.py baseline.txt current.txt
-
-# Monitor in CI/CD
-# See .github/workflows/performance-monitoring.yml
-```
-
-For detailed performance documentation, see [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 ## SQL Injection Detection
 
