@@ -21,6 +21,38 @@ cd vn
 go build -o vn .
 ```
 
+## Docker
+
+You can also build and run `vn` using Docker. This is a convenient way to run the tool without installing Go locally.
+
+### Build the Image
+
+First, build the Docker image:
+
+```bash
+docker build -t vn-cli .
+```
+
+### Run Commands
+
+Once the image is built, you can run any `vn` command using the following format:
+
+```bash
+docker run --rm vn-cli [command]
+```
+
+The `--rm` flag automatically removes the container after the command is executed.
+
+**Examples:**
+
+```bash
+# Show the help message
+docker run --rm vn-cli --help
+
+# Run a SQL injection scan
+docker run --rm vn-cli sqli https://example.com/login.php?id=1
+```
+
 ## Usage
 
 ### SQL Injection Testing
