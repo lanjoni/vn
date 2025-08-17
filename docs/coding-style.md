@@ -9,6 +9,7 @@ We're following default Go preferences and coding style guide.
 ## Code Style
 - Follow existing patterns in the codebase
 - Maintain consistency with existing scanner implementations
+- Prefer tabs over spaces
 
 ## Tests
 - Unit tests are on the same level as the original file to test

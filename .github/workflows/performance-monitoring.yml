@@ -25,7 +25,6 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    
     - name: Download baseline performance data
       uses: actions/cache@v4
       with:
