@@ -649,7 +649,6 @@ func (m *MisconfigScanner) TestBackupFiles() []MisconfigResult {
 		"/backup.sql",
 	}
 
-	// Add the parsed URL path if it's not empty and starts with /
 	if parsedURL.Path != "" && strings.HasPrefix(parsedURL.Path, "/") {
 		basePaths = append(basePaths, parsedURL.Path)
 	}
@@ -662,7 +661,6 @@ func (m *MisconfigScanner) TestBackupFiles() []MisconfigResult {
 				semaphore <- struct{}{}
 				defer func() { <-semaphore }()
 
-				// Ensure the path starts with / to avoid malformed URLs
 				if !strings.HasPrefix(path, "/") {
 					path = "/" + path
 				}

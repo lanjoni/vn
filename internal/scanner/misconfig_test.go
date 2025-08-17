@@ -8,12 +8,10 @@ import (
 	"time"
 )
 
-// setupTestServer is a helper function to create a test server for misconfiguration scans.
 func setupTestServer(handler http.HandlerFunc) *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
-// newTestScanner creates a new MisconfigScanner with a default configuration for testing.
 func newTestScanner(url string) *MisconfigScanner {
 	config := MisconfigConfig{
 		URL:     url,
@@ -69,7 +67,6 @@ func TestMisconfigScanner_SensitiveFiles(t *testing.T) {
 func TestMisconfigScanner_SecurityHeaders(t *testing.T) {
 	t.Parallel()
 	server := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
-		// No security headers set
 		w.WriteHeader(http.StatusOK)
 	})
 	defer server.Close()
@@ -109,7 +106,6 @@ func TestMisconfigScanner_DefaultCredentials(t *testing.T) {
 				return
 			}
 		}
-		// Serve login form for GET requests
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`<form method="post"><input name="username"><input type="password" name="password"></form>`))
 	})
@@ -136,12 +132,11 @@ func TestMisconfigScanner_DefaultCredentials(t *testing.T) {
 
 func TestMisconfigScanner_ErrorHandling(t *testing.T) {
 	t.Parallel()
-	// Server that immediately closes to simulate a connection error
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	server.Close()
 
 	scanner := newTestScanner(server.URL)
-	scanner.Scan() // Run a full scan
+	scanner.Scan()
 
 	errors := scanner.GetErrors()
 	if len(errors) == 0 {
@@ -158,24 +153,21 @@ func TestMisconfigScanner_ErrorHandling(t *testing.T) {
 func TestMisconfigScanner_FullScan(t *testing.T) {
 	t.Parallel()
 	server := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
-		// A handler for a comprehensive test
 		if r.URL.Path == "/.env" {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("SECRET_KEY=12345"))
 			return
 		}
-		// Missing security headers is the default
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
 	defer server.Close()
 
 	scanner := newTestScanner(server.URL)
-	// Explicitly set the tests to run
 	scanner.config.Tests = []string{"files", "headers"}
 	results := scanner.Scan()
 
-	if len(results) < 4 { // 1 sensitive file + 3 missing headers
+	if len(results) < 4 {
 		t.Errorf("expected at least 4 findings, got %d", len(results))
 	}
 
