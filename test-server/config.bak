@@ -1,0 +1,6 @@
+# Backup configuration file
+database_host=localhost
+database_user=root
+database_password=secret123
+api_key=sk-test-key-12345
+debug_mode=true

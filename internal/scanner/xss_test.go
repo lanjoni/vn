@@ -1,23 +1,21 @@
-package scanner_test
+package scanner
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"vn/internal/scanner"
 )
 
 func TestNewXSSScanner(t *testing.T) {
-	config := scanner.XSSConfig{
+	config := XSSConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
 
-	xssScanner := scanner.NewXSSScanner(config)
+	xssScanner := NewXSSScanner(config)
 
 	if xssScanner.GetConfig().URL != config.URL {
 		t.Errorf("Expected URL %s, got %s", config.URL, xssScanner.GetConfig().URL)
@@ -33,13 +31,13 @@ func TestNewXSSScanner(t *testing.T) {
 }
 
 func TestIsPayloadReflected(t *testing.T) {
-	config := scanner.XSSConfig{
+	config := XSSConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	xssScanner := scanner.NewXSSScanner(config)
+	xssScanner := NewXSSScanner(config)
 
 	testCases := []struct {
 		name     string
@@ -108,13 +106,13 @@ func TestIsPayloadReflected(t *testing.T) {
 }
 
 func TestGetRiskLevel(t *testing.T) {
-	config := scanner.XSSConfig{
+	config := XSSConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	xssScanner := scanner.NewXSSScanner(config)
+	xssScanner := NewXSSScanner(config)
 
 	testCases := []struct {
 		name        string
@@ -165,14 +163,14 @@ func TestGetRiskLevel(t *testing.T) {
 }
 
 func TestXSSPayloads(t *testing.T) {
-	config := scanner.XSSConfig{
+	config := XSSConfig{
 		URL:     "http://example.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
 
-	xssScanner := scanner.NewXSSScanner(config)
+	xssScanner := NewXSSScanner(config)
 	if xssScanner == nil {
 		t.Error("Expected scanner to be created successfully")
 	}
@@ -203,7 +201,7 @@ func TestXSSScannerIntegration(t *testing.T) {
 	}))
 	defer server.Close()
 
-	config := scanner.XSSConfig{
+	config := XSSConfig{
 		URL:     server.URL + "?q=test",
 		Method:  "GET",
 		Params:  []string{"q"},
@@ -211,7 +209,7 @@ func TestXSSScannerIntegration(t *testing.T) {
 		Threads: 2,
 	}
 
-	xssScanner := scanner.NewXSSScanner(config)
+	xssScanner := NewXSSScanner(config)
 	results := xssScanner.Scan()
 
 	if len(results) == 0 {
@@ -238,13 +236,13 @@ func TestXSSScannerIntegration(t *testing.T) {
 }
 
 func TestXSSAnalyzeResponse(t *testing.T) {
-	config := scanner.XSSConfig{
+	config := XSSConfig{
 		URL:     "http://test.com",
 		Method:  "GET",
 		Timeout: 10 * time.Second,
 		Threads: 5,
 	}
-	xssScanner := scanner.NewXSSScanner(config)
+	xssScanner := NewXSSScanner(config)
 
 	testCases := []struct {
 		name     string

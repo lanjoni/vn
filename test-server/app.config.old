@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <appSettings>
+    <add key="DatabaseConnection" value="Server=localhost;Database=testdb;User=sa;Password=Password123;" />
+    <add key="ApiSecret" value="my-super-secret-api-key" />
+    <add key="DebugMode" value="true" />
+  </appSettings>
+</configuration>

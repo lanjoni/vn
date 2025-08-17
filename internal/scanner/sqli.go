@@ -14,10 +14,6 @@ import (
 	"github.com/fatih/color"
 )
 
-const (
-	httpMethodPOST = "POST"
-)
-
 type SQLiConfig struct {
 	URL     string
 	Method  string
@@ -197,12 +193,12 @@ func (s *SQLiScanner) testPayload(param, payload, payloadType string) {
 
 	var req *http.Request
 
-	if s.config.Method == "GET" {
+	if s.config.Method == httpMethodGET {
 		query := parsedURL.Query()
 		query.Set(param, payload)
 		parsedURL.RawQuery = query.Encode()
 
-		req, err = http.NewRequest("GET", parsedURL.String(), nil)
+		req, err = http.NewRequest(httpMethodGET, parsedURL.String(), nil)
 	} else if s.config.Method == httpMethodPOST {
 		var postData string
 		if s.config.Data != "" {

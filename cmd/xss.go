@@ -41,8 +41,8 @@ Examples:
 			Threads: threads,
 		}
 
-		color.New(color.FgGreen, color.Bold).Printf("🔍 Starting XSS scan on: %s\n", url)  // #nosec G104
-		color.New(color.FgYellow).Printf("⚙️  Method: %s, Timeout: %ds, Threads: %d\n\n", // #nosec G104
+		color.New(color.FgGreen, color.Bold).Printf("🔍 Starting XSS scan on: %s\n", url)
+		color.New(color.FgYellow).Printf("⚙️  Method: %s, Timeout: %ds, Threads: %d\n\n",
 			method, timeout, threads)
 
 		xssScanner := scanner.NewXSSScanner(config)
@@ -54,24 +54,24 @@ Examples:
 
 func displayXSSResults(results []scanner.XSSResult) {
 	if len(results) == 0 {
-		color.New(color.FgGreen, color.Bold).Println("✅ No XSS vulnerabilities found!") // #nosec G104
+		color.New(color.FgGreen, color.Bold).Println("✅ No XSS vulnerabilities found!")
 		return
 	}
 
-	color.New(color.FgRed, color.Bold).Printf("🚨 Found %d potential XSS vulnerabilities:\n\n", len(results)) // #nosec G104
+	color.New(color.FgRed, color.Bold).Printf("🚨 Found %d potential XSS vulnerabilities:\n\n", len(results))
 
 	for i, result := range results {
-		color.New(color.FgRed, color.Bold).Printf("[%d] XSS Vulnerability Detected\n", i+1) // #nosec G104
-		color.New(color.FgWhite).Printf("   URL: %s\n", result.URL)                         // #nosec G104
-		color.New(color.FgWhite).Printf("   Parameter: %s\n", result.Parameter)             // #nosec G104
-		color.New(color.FgWhite).Printf("   Payload: %s\n", result.Payload)                 // #nosec G104
-		color.New(color.FgWhite).Printf("   Type: %s\n", result.Type)                       // #nosec G104
-		color.New(color.FgYellow).Printf("   Evidence: %s\n", result.Evidence)              // #nosec G104
-		color.New(color.FgCyan).Printf("   Risk Level: %s\n", result.RiskLevel)             // #nosec G104
+		color.New(color.FgRed, color.Bold).Printf("[%d] XSS Vulnerability Detected\n", i+1)
+		color.New(color.FgWhite).Printf("   URL: %s\n", result.URL)
+		color.New(color.FgWhite).Printf("   Parameter: %s\n", result.Parameter)
+		color.New(color.FgWhite).Printf("   Payload: %s\n", result.Payload)
+		color.New(color.FgWhite).Printf("   Type: %s\n", result.Type)
+		color.New(color.FgYellow).Printf("   Evidence: %s\n", result.Evidence)
+		color.New(color.FgCyan).Printf("   Risk Level: %s\n", result.RiskLevel)
 		fmt.Println()
 	}
 
-	color.New(color.FgRed, color.Bold).Println("⚠️  Please review and fix these vulnerabilities!") // #nosec G104
+	color.New(color.FgRed, color.Bold).Println("⚠️  Please review and fix these vulnerabilities!")
 }
 
 func init() {

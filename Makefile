@@ -1,137 +1,100 @@
-# VN - Vulnerability Navigator Makefile
+# Makefile for VN - Vulnerability Navigator
 
-.PHONY: help build test test-unit test-integration test-coverage clean lint fmt vet security run-server benchmark install-tools
-
-# Variables
-BINARY_NAME=vn
-VERSION?=dev
-LDFLAGS=-ldflags "-s -w -X main.version=${VERSION}"
-COVERAGE_FILE=coverage.out
-COVERAGE_HTML=coverage.html
+.PHONY: help build test test-unit test-integration test-e2e test-shared test-all test-coverage clean benchmark performance-check
 
 # Default target
-help: ## Display this help message
-	@echo "VN - Vulnerability Navigator"
-	@echo "Available commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+help:
+	@echo "Available targets:"
+	@echo "  build              - Build the VN binary"
+	@echo "  test               - Run all tests"
+	@echo "  test-unit          - Run unit tests only"
+	@echo "  test-integration   - Run integration tests only"
+	@echo "  test-e2e           - Run end-to-end tests only"
+	@echo "  test-shared        - Run shared infrastructure tests only"
+	@echo "  test-coverage      - Run tests with coverage report"
+	@echo "  benchmark          - Run performance benchmarks"
+	@echo "  performance-check  - Validate test performance targets"
+	@echo "  clean              - Clean build artifacts and test cache"
 
-build: ## Build the binary
-	@echo "Building ${BINARY_NAME}..."
-	go build ${LDFLAGS} -o ${BINARY_NAME} .
+# Build targets
+build:
+	@echo "Building VN binary..."
+	go build -v -ldflags="-s -w" -o vn .
 
-build-all: ## Build binaries for all platforms
-	@echo "Building for all platforms..."
-	GOOS=linux GOARCH=amd64 go build ${LDFLAGS} -o ${BINARY_NAME}-linux-amd64 .
-	GOOS=linux GOARCH=arm64 go build ${LDFLAGS} -o ${BINARY_NAME}-linux-arm64 .
-	GOOS=darwin GOARCH=amd64 go build ${LDFLAGS} -o ${BINARY_NAME}-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build ${LDFLAGS} -o ${BINARY_NAME}-darwin-arm64 .
-	GOOS=windows GOARCH=amd64 go build ${LDFLAGS} -o ${BINARY_NAME}-windows-amd64.exe .
+# Test targets
+test: test-unit test-integration test-e2e test-shared
 
-test: test-unit test-integration ## Run all tests
-
-test-unit: ## Run unit tests
+test-unit:
 	@echo "Running unit tests..."
-	go test -v -race ./tests/unit/...
+	go test -v -race ./internal/... ./cmd/... -count=1
 
-test-integration: ## Run integration tests
+test-integration:
 	@echo "Running integration tests..."
-	go test -v ./tests/integration/...
+	go test -v -tags=integration ./tests/integration -count=1
 
-test-coverage: ## Run tests with coverage
+test-e2e:
+	@echo "Running E2E tests..."
+	go test -v -tags=e2e ./tests/e2e -count=1
+
+test-shared:
+	@echo "Running shared infrastructure tests..."
+	go test -v ./tests/shared -count=1
+
+test-coverage:
 	@echo "Running tests with coverage..."
-	go test -v -race -coverprofile=${COVERAGE_FILE} ./...
-	go tool cover -html=${COVERAGE_FILE} -o ${COVERAGE_HTML}
-	@echo "Coverage report generated: ${COVERAGE_HTML}"
+	go test -v -race -coverprofile=coverage.out ./internal/... ./cmd/... ./tests/shared
+	go tool cover -html=coverage.out -o coverage.html
+	go tool cover -func=coverage.out
 
-test-short: ## Run short tests only
-	@echo "Running short tests..."
-	go test -short -v ./...
-
-benchmark: ## Run benchmarks
+# Performance targets
+benchmark:
 	@echo "Running benchmarks..."
-	go test -bench=. -benchmem ./tests/integration/...
+	go test -bench=. -benchmem ./tests/shared
 
-lint: ## Run linting
-	@echo "Running linter..."
-	golangci-lint run
+performance-check:
+	@echo "Validating test performance targets..."
+	@chmod +x scripts/simple-performance-validation.sh
+	@./scripts/simple-performance-validation.sh
 
-fmt: ## Format code
-	@echo "Formatting code..."
-	go fmt ./...
-	goimports -w .
+performance-measure:
+	@echo "Measuring test performance..."
+	@chmod +x scripts/measure-test-performance.sh
+	@./scripts/measure-test-performance.sh
 
-vet: ## Run go vet
-	@echo "Running go vet..."
-	go vet ./...
+# Utility targets
+clean:
+	@echo "Cleaning build artifacts and test cache..."
+	go clean -cache -testcache -modcache
+	rm -f vn coverage.out coverage.html
+	rm -f performance-*.txt benchmark-*.txt
 
-security: ## Run security scan
-	@echo "Running security scan..."
-	gosec ./...
+# Development workflow targets
+test-quick: test-unit test-shared
+	@echo "Quick tests completed"
 
-clean: ## Clean build artifacts
-	@echo "Cleaning up..."
-	rm -f ${BINARY_NAME}
-	rm -f ${BINARY_NAME}-*
-	rm -f ${COVERAGE_FILE}
-	rm -f ${COVERAGE_HTML}
-	rm -f vn-test
-	rm -f vn-bench
+test-ci: test-unit test-shared test-integration
+	@echo "CI tests completed"
 
-install-tools: ## Install development tools
-	@echo "Installing development tools..."
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	go install github.com/securego/gosec/v2/cmd/gosec@latest
-	go install golang.org/x/tools/cmd/goimports@latest
-
-run-server: ## Start the vulnerable test server
-	@echo "Starting vulnerable test server on :8080..."
-	cd test-server && go run main.go
-
-deps: ## Download dependencies
+# Install dependencies
+deps:
 	@echo "Downloading dependencies..."
 	go mod download
 	go mod verify
 
-tidy: ## Tidy dependencies
-	@echo "Tidying dependencies..."
-	go mod tidy
+# Format and lint
+fmt:
+	@echo "Formatting code..."
+	go fmt ./...
 
-update: ## Update dependencies
-	@echo "Updating dependencies..."
-	go get -u ./...
-	go mod tidy
+lint:
+	@echo "Running linter..."
+	golangci-lint run
 
-pre-commit: fmt vet lint test-unit ## Run pre-commit checks
-	@echo "Pre-commit checks passed!"
+# Security scan
+security:
+	@echo "Running security scan..."
+	gosec ./...
 
-ci: deps vet lint test benchmark ## Run CI pipeline locally
-	@echo "CI pipeline completed!"
-
-install: build ## Install the binary to $GOPATH/bin
-	@echo "Installing ${BINARY_NAME}..."
-	go install ${LDFLAGS} .
-
-docker-build: ## Build Docker image
-	@echo "Building Docker image..."
-	docker build -t vn:${VERSION} .
-
-docker-run: ## Run Docker container
-	@echo "Running Docker container..."
-	docker run --rm -it vn:${VERSION}
-
-release-test: ## Test release process
-	@echo "Testing release process..."
-	goreleaser release --snapshot --clean
-
-# Development helpers
-dev-setup: install-tools deps ## Set up development environment
-	@echo "Development environment setup complete!"
-
-check: fmt vet lint test-unit ## Quick development check
-	@echo "Quick check passed!"
-
-all: clean deps fmt vet lint test build ## Build everything from scratch
-	@echo "Build complete!"
-
-# Help target should be first
-.DEFAULT_GOAL := help 
+# Full CI pipeline
+ci: deps fmt lint security test performance-check
+	@echo "Full CI pipeline completed successfully"

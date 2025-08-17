@@ -56,6 +56,9 @@ bin/
 tmp/
 temp/
 
+# Temporary build for test server
+test-server
+
 # Environment variables
 .env
 .env.local
@@ -71,3 +74,6 @@ tmp/
 # Test artifacts
 *.test
 test-results/ 
+
+# Editor setups
+.kiro/

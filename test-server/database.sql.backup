@@ -1,0 +1,29 @@
+-- Database backup file
+-- Generated on 2024-01-01 12:00:00
+
+CREATE DATABASE IF NOT EXISTS testapp;
+USE testapp;
+
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    email VARCHAR(100),
+    role VARCHAR(20) DEFAULT 'user'
+);
+
+INSERT INTO users (username, password, email, role) VALUES
+('admin', 'admin123', 'admin@test.com', 'admin'),
+('root', 'root', 'root@test.com', 'admin'),
+('test', 'password', 'test@test.com', 'user');
+
+CREATE TABLE api_keys (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    key_name VARCHAR(50),
+    api_key VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO api_keys (key_name, api_key) VALUES
+('main_api', 'sk-1234567890abcdef'),
+('backup_api', 'sk-fedcba0987654321');

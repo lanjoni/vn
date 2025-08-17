@@ -27,6 +27,8 @@ A powerful CLI tool for security testing based on OWASP Top 10.
 
 Currently supports:
 • SQL Injection Testing
+• Cross-Site Scripting (XSS) Testing
+• Security Misconfiguration Testing
 • More vulnerabilities coming soon...`),
 }
 

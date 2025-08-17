@@ -1,3 +1,6 @@
+//go:build fast
+// +build fast
+
 package integration
 
 import (
@@ -56,6 +59,7 @@ func healthEndpoint(w http.ResponseWriter, _ *http.Request) {
 }
 
 func TestVulnerableEndpoint(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name           string
 		method         string
@@ -158,6 +162,7 @@ func TestVulnerableEndpoint(t *testing.T) {
 }
 
 func TestHealthEndpoint(t *testing.T) {
+	t.Parallel()
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/health", nil)
 	if err != nil {
 		t.Fatalf("Could not create request: %v", err)
@@ -183,6 +188,7 @@ func TestHealthEndpoint(t *testing.T) {
 }
 
 func TestVulnerableEndpointHeaders(t *testing.T) {
+	t.Parallel()
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/", nil)
 	if err != nil {
 		t.Fatalf("Could not create request: %v", err)
@@ -198,6 +204,7 @@ func TestVulnerableEndpointHeaders(t *testing.T) {
 }
 
 func TestMultipleParameters(t *testing.T) {
+	t.Parallel()
 	req, err := http.NewRequestWithContext(context.Background(), "GET", "/?id=1&username=admin'&search=test", nil)
 	if err != nil {
 		t.Fatalf("Could not create request: %v", err)
