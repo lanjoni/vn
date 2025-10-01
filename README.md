@@ -268,4 +268,4 @@ vn/
 
 ## License
 
-MIT License - see LICENSE file for details. 
+AGPL-3.0 license - see LICENSE file for details. 
