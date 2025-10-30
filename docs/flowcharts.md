@@ -457,25 +457,6 @@ sequenceDiagram
     CLI->>User: Display formatted output
 ```
 
-PT
-```mermaid
-sequenceDiagram
-    participant Usuário
-    participant CLI
-    participant Scanner
-    participant Alvo
-    
-    Usuário->>CLI: vn sqli https://exemplo.com?id=1
-    CLI->>CLI: Parser de argumentos e parâmetros
-    CLI->>Scanner: Cria um scanner SQLi com configuração
-    Scanner->>Scanner: Carrega payloads
-    Scanner->>Alvo: Envia requisições de teste
-    Alvo-->>Scanner: Respostas HTTP
-    Scanner->>Scanner: Análise das respostas
-    Scanner->>CLI: Retorno dos resultaods
-    CLI->>Usuário: Apresenta resultados formatados
-```
-
 ### Concurrent Testing Flow
 ```mermaid
 sequenceDiagram
