@@ -2,6 +2,8 @@
 
 A powerful CLI tool for security testing based on OWASP Top 10 vulnerabilities.
 
+[![asciicast demo](https://asciinema.org/a/752737.svg)](https://asciinema.org/a/752737)
+
 ## Features
 
 - **SQL Injection Testing**: Comprehensive SQL injection testing with multiple payload types
