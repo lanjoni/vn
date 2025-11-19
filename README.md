@@ -17,6 +17,7 @@ A powerful CLI tool for security testing based on OWASP Top 10 vulnerabilities.
 
 ## Installation
 
+You can download the [binary files on releases page](https://github.com/lanjoni/vn/releases) or even clone the repository with:
 ```bash
 git clone https://github.com/lanjoni/vn.git
 cd vn
