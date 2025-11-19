@@ -9,6 +9,10 @@ on:
 jobs:
   performance-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     
     steps:
     - uses: actions/checkout@v4
@@ -123,14 +127,16 @@ jobs:
               }
             }
             
-            github.rest.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: comment
             });
           } catch (error) {
-            console.log('Could not post performance results:', error);
+            console.error('Could not post performance results:', error.message);
+            console.error('Error details:', JSON.stringify(error, null, 2));
+            // Don't fail the workflow if comment posting fails
           }
 
   performance-benchmark:
